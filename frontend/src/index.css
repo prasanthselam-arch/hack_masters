@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Tamil", "Noto Sans Kannada", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #effcf8;
+  --color-brand-100: #d7f6ec;
+  --color-brand-200: #b0ecd9;
+  --color-brand-300: #7bdbc1;
+  --color-brand-400: #45c2a5;
+  --color-brand-500: #22a78b;
+  --color-brand-600: #168672;
+  --color-brand-700: #156b5d;
+  --color-brand-800: #15554b;
+  --color-brand-900: #13463f;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}

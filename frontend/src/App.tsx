@@ -1,0 +1,49 @@
+import { lazy } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Layout } from './components/Layout'
+import { ErrorNote, Spinner } from './components/ui'
+import { usePatient } from './lib/patient'
+import Dashboard from './pages/Dashboard'
+import Onboarding from './pages/Onboarding'
+
+const UploadPage = lazy(() => import('./pages/Upload'))
+const Review = lazy(() => import('./pages/Review'))
+const DocumentView = lazy(() => import('./pages/DocumentView'))
+const Timeline = lazy(() => import('./pages/Timeline'))
+const Trends = lazy(() => import('./pages/Trends'))
+const Medications = lazy(() => import('./pages/Medications'))
+const Chat = lazy(() => import('./pages/Chat'))
+const Abha = lazy(() => import('./pages/Abha'))
+
+export default function App() {
+  const { t } = useTranslation()
+  const { patient, loading, error } = usePatient()
+
+  if (loading) return <Spinner className="h-full" label={t('common.loading')} />
+  if (error && !patient)
+    return (
+      <div className="mx-auto max-w-lg p-8">
+        <ErrorNote error={error} onRetry={() => location.reload()} />
+      </div>
+    )
+  if (!patient) return <Onboarding />
+
+  return (
+    <Routes>
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="upload" element={<UploadPage />} />
+          <Route path="documents/:id" element={<DocumentView />} />
+          <Route path="documents/:id/review" element={<Review />} />
+          <Route path="timeline" element={<Timeline />} />
+          <Route path="trends" element={<Trends />} />
+          <Route path="medications" element={<Medications />} />
+          <Route path="chat" element={<Chat />} />
+          <Route path="abha" element={<Abha />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+    </Routes>
+  )
+}
