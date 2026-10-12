@@ -83,6 +83,7 @@ start_one() {
     (cd "$ROOT/backend"; setsid nohup .venv/bin/uvicorn "${args[@]}" </dev/null >"$RUN/backend.log" 2>&1 & echo $! >"$RUN/backend.pid")
   else
     [[ -d $ROOT/frontend/node_modules ]] || { red "frontend not set up. Run './run.sh setup' first."; return 1; }
+    find_node >/dev/null || { red "Node 20.19+ or 22.12+ not found. Run './run.sh setup' to install it."; return 1; }
     (cd "$ROOT/frontend"; setsid nohup npm run dev -- --host "$HOST" --port "$port" --strictPort </dev/null >"$RUN/frontend.log" 2>&1 & echo $! >"$RUN/frontend.pid")
   fi
 
@@ -136,6 +137,12 @@ status_one() {
 
 # --- setup -----------------------------------------------------------------------------------------
 
+TOOLS="$ROOT/.tools"
+USER_HOME=$HOME
+if [[ $EUID -eq 0 && -n ${SUDO_USER:-} ]]; then USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6); fi
+
+as_root() { if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi; }
+
 # Python 3.11-3.13: the pinned wheels (pillow, numpy, opencv) don't exist for newer versions yet.
 find_python() {
   local c
@@ -145,68 +152,77 @@ find_python() {
   done
   return 1
 }
-
 py_version() { "$1" -c 'import sys; print("%d.%d" % sys.version_info[:2])'; }
 py_has_venv() { "$1" -c 'import ensurepip, venv' 2>/dev/null; }
-node_ok() {
-  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 &&
-    node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)||(a===20&&b>=19)?0:1)'
-}
-as_root() { if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi; }
 
-install_system_deps() {
-  local py missing=()
+# Vite needs Node 20.19+ or 22.12+. sudo resets PATH, so also look where nvm and volta keep Node,
+# and in .tools/node, where setup downloads it if there is none.
+node_version_ok() {
+  "$1" -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)||(a===20&&b>=19)?0:1)' 2>/dev/null
+}
+find_node() {
+  local n
+  for n in "$(command -v node 2>/dev/null)" "$TOOLS/node/bin/node" \
+           $(ls -d "$USER_HOME"/.nvm/versions/node/v*/bin/node 2>/dev/null | sort -rV) "$USER_HOME/.volta/bin/node"; do
+    [[ -n $n && -x $n ]] && node_version_ok "$n" && { echo "$n"; return 0; }
+  done
+  return 1
+}
+use_node() {
+  local n
+  n=$(find_node) || return 1
+  PATH="$(dirname "$n"):$PATH"
+  export PATH
+}
+
+install_node() {
+  local arch base sum file tmp
+  case $(uname -m) in
+    x86_64) arch=x64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) red "No prebuilt Node for $(uname -m). Install Node 22 yourself and rerun."; exit 1 ;;
+  esac
+  base=https://nodejs.org/dist/latest-v22.x
+  echo "frontend: downloading Node 22 from nodejs.org into .tools/node (nothing system-wide)…"
+  read -r sum file < <(curl -fsSL "$base/SHASUMS256.txt" | grep "linux-$arch.tar.gz\$" || true)
+  [[ -n ${file:-} ]] || { red "Could not reach nodejs.org. Install Node 22 yourself and rerun."; exit 1; }
+  tmp=$(mktemp -d)
+  curl -fsSL "$base/$file" -o "$tmp/$file"
+  (cd "$tmp" && echo "$sum  $file" | sha256sum -c --quiet -) || { red "Node download failed its checksum."; exit 1; }
+  rm -rf "$TOOLS/node" && mkdir -p "$TOOLS/node"
+  tar -xzf "$tmp/$file" -C "$TOOLS/node" --strip-components=1
+  rm -rf "$tmp"
+}
+
+# Only small system packages need root. Python and Node have no-root fallbacks (uv, .tools/node),
+# so apt problems such as a broken sources.list are warnings, not failures.
+install_system_packages() {
+  local py pkgs=()
   py=$(find_python || true)
-  # No suitable Python but uv already installed (from an earlier run): uv covers it.
-  { [[ -n $py ]] && py_has_venv "$py"; } || [[ -z $py && -n $(find_uv) ]] || missing+=(python)
-  node_ok || missing+=(node)
-  command -v lsof >/dev/null 2>&1 || missing+=(lsof)
-  command -v curl >/dev/null 2>&1 || missing+=(curl)
-  if [[ ${#missing[@]} -eq 0 ]]; then
-    dim "system: python ${py:+$(py_version "$py")}${py:-via uv}, node $(node --version), lsof, curl ok"
+  if [[ -n $py ]] && ! py_has_venv "$py"; then pkgs+=("python$(py_version "$py")-venv"); fi
+  command -v lsof >/dev/null 2>&1 || pkgs+=(lsof)
+  command -v curl >/dev/null 2>&1 || pkgs+=(curl ca-certificates)
+  if [[ ${#pkgs[@]} -eq 0 ]]; then
+    dim "system: ok (python ${py:+$(py_version "$py")}${py:-via uv}, lsof, curl)"
     return 0
   fi
-
-  if ! command -v apt-get >/dev/null 2>&1; then
-    red "Missing: ${missing[*]}. This script installs them with apt (Ubuntu/Debian) only."
-    dim "Install Python 3.12 with venv, Node 22, lsof and curl yourself, then rerun ./run.sh setup"
-    exit 1
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "system: installing ${pkgs[*]} (needs root)…"
+    export DEBIAN_FRONTEND=noninteractive
+    as_root apt-get update -qq || dim "system: apt-get update reported errors (above); trying the install anyway"
+    as_root apt-get install -y -qq "${pkgs[@]}" >/dev/null || dim "system: could not install ${pkgs[*]}; continuing without"
+    hash -r
+  else
+    dim "system: not an apt system; please install ${pkgs[*]} if setup fails"
   fi
-  echo "system: installing ${missing[*]} (needs root)…"
-  export DEBIAN_FRONTEND=noninteractive
-  as_root apt-get update -qq
-  as_root apt-get install -y -qq ca-certificates curl gnupg lsof >/dev/null
-
-  if [[ " ${missing[*]} " == *" python "* ]]; then
-    if [[ -n $py ]]; then
-      as_root apt-get install -y -qq "python$(py_version "$py")-venv" >/dev/null
-    elif ! as_root apt-get install -y -qq python3.12 python3.12-venv >/dev/null 2>&1; then
-      dim "system: this release has no Python 3.11-3.13 package; the backend will use a uv-managed Python 3.12"
-    fi
-  fi
-
-  if [[ " ${missing[*]} " == *" node "* ]]; then
-    # Distro node/npm packages are too old for Vite and clash with NodeSource's nodejs package.
-    as_root apt-get remove -y -qq nodejs npm libnode-dev >/dev/null 2>&1 || true
-    curl -fsSL https://deb.nodesource.com/setup_22.x | as_root bash - >/dev/null
-    as_root apt-get install -y -qq nodejs >/dev/null
-  fi
-
-  hash -r
-  if ! node_ok || ! command -v lsof >/dev/null 2>&1; then
-    red "System packages still missing after install (node: $(node --version 2>/dev/null || echo none))."
-    exit 1
-  fi
-  py=$(find_python || true)
-  green "system: python ${py:+$(py_version "$py")}${py:-via uv}, node $(node --version) installed"
+  command -v curl >/dev/null 2>&1 || { red "curl is required. Install it (fix apt first if it showed errors) and rerun."; exit 1; }
 }
 
 # uv downloads a standalone Python into the user's home, for systems whose packages only offer
-# an unsupported version (e.g. 3.14). Nothing system-wide changes.
+# an unsupported version (e.g. 3.14) or lack the venv module. Nothing system-wide changes.
 find_uv() {
   command -v uv 2>/dev/null || { [[ -x $HOME/.local/bin/uv ]] && echo "$HOME/.local/bin/uv"; }
 }
-
 make_venv() {
   local venv=$1 py uv
   py=$(find_python || true)
@@ -217,7 +233,7 @@ make_venv() {
   fi
   uv=$(find_uv || true)
   if [[ -z $uv ]]; then
-    echo "backend: no Python 3.11-3.13 on this system, installing uv to ~/.local/bin…"
+    echo "backend: no usable Python 3.11-3.13 with venv, installing uv to ~/.local/bin…"
     curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null
     uv=$(find_uv) || { red "Could not install uv. Install Python 3.12 with venv and rerun."; exit 1; }
   fi
@@ -226,9 +242,9 @@ make_venv() {
 }
 
 setup() {
-  local venv="$ROOT/backend/.venv" py
+  local venv="$ROOT/backend/.venv"
 
-  install_system_deps
+  install_system_packages
 
   # Under sudo, only the system packages above are installed as root. The project files and the rest
   # of the setup belong to the user who ran sudo, so the app can write to them later.
@@ -240,6 +256,12 @@ setup() {
     dim "fixing files left owned by root by an earlier sudo run (may ask for your password)"
     as_root chown -R "$(id -un)": "$ROOT"
   fi
+
+  if ! use_node; then
+    install_node
+    use_node || { red "Node install failed."; exit 1; }
+  fi
+  dim "node: $(node --version) ($(command -v node))"
 
   # Rebuild a .venv left without pip by a failed attempt, or made with an unsupported Python.
   if [[ ! -x $venv/bin/pip ]] || ! "$venv/bin/python" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] <= (3, 13))' 2>/dev/null; then
@@ -275,6 +297,7 @@ targets() {
 
 cmd="${1:-help}"
 svc="${2:-all}"
+use_node || true
 case "$cmd" in
   start)
     ok=1
