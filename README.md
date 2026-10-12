@@ -104,11 +104,10 @@ To deploy your own copy for free, follow [DOCUMENT.md § 6](DOCUMENT.md#6-deploy
 | | Role |
 |---|---|
 | **Prasanth Selam** · [prasanth.selam@gmail.com](mailto:prasanth.selam@gmail.com) · [@prasanthselam-arch](https://github.com/prasanthselam-arch) | Lead developer |
-| **Hemanth Selam** · [hemanth.selam@gmail.com](mailto:hemanth.selam@gmail.com) | Co-developer |
 
 ## License
 
-Copyright 2026 Prasanth Selam and Hemanth Selam.
+Copyright 2026 Prasanth Selam.
 
 Licensed under the [Apache License, Version 2.0](LICENSE). Any redistribution, modified or not, must keep the
 [LICENSE](LICENSE) and [NOTICE](NOTICE) files, including the authors' copyright and attribution, and must state what
