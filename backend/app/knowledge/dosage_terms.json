@@ -1,0 +1,40 @@
+{
+  "_meta": "Prescription shorthand used in India. Pattern codes map to morning/afternoon/night units. Regional-language phrases cover hi, te, ta, kn.",
+  "frequencies": {
+    "OD":     {"aliases": ["od", "o.d", "o.d.", "once daily", "once a day", "qd", "q.d.", "1 time a day", "daily"], "per_day": 1, "pattern": [1, 0, 0], "text": "once a day"},
+    "BD":     {"aliases": ["bd", "b.d", "b.d.", "bid", "b.i.d", "b.i.d.", "twice daily", "twice a day", "2 times a day"], "per_day": 2, "pattern": [1, 0, 1], "text": "twice a day (morning and night)"},
+    "TDS":    {"aliases": ["tds", "t.d.s", "t.d.s.", "tid", "t.i.d", "t.i.d.", "thrice daily", "three times a day", "3 times a day"], "per_day": 3, "pattern": [1, 1, 1], "text": "three times a day"},
+    "QID":    {"aliases": ["qid", "q.i.d", "q.i.d.", "qds", "four times a day", "4 times a day"], "per_day": 4, "pattern": null, "text": "four times a day"},
+    "HS":     {"aliases": ["hs", "h.s", "h.s.", "at bedtime", "bedtime", "at night", "nocte"], "per_day": 1, "pattern": [0, 0, 1], "text": "once at bedtime"},
+    "SOS":    {"aliases": ["sos", "s.o.s", "prn", "p.r.n", "as needed", "if needed", "when required", "if required"], "per_day": null, "pattern": null, "text": "only when needed"},
+    "STAT":   {"aliases": ["stat", "immediately", "now"], "per_day": null, "pattern": null, "text": "once, immediately"},
+    "Q4H":    {"aliases": ["q4h", "4 hourly", "every 4 hours"], "per_day": 6, "pattern": null, "text": "every 4 hours"},
+    "Q6H":    {"aliases": ["q6h", "6 hourly", "every 6 hours"], "per_day": 4, "pattern": null, "text": "every 6 hours"},
+    "Q8H":    {"aliases": ["q8h", "8 hourly", "every 8 hours"], "per_day": 3, "pattern": null, "text": "every 8 hours"},
+    "Q12H":   {"aliases": ["q12h", "12 hourly", "every 12 hours"], "per_day": 2, "pattern": null, "text": "every 12 hours"},
+    "QOD":    {"aliases": ["qod", "alternate day", "alternate days", "every other day", "ad"], "per_day": null, "pattern": null, "text": "every other day"},
+    "WEEKLY": {"aliases": ["weekly", "once a week", "once weekly", "1/week", "per week", "every week"], "per_day": null, "pattern": null, "text": "once a week"},
+    "MONTHLY": {"aliases": ["monthly", "once a month"], "per_day": null, "pattern": null, "text": "once a month"}
+  },
+  "meal_relation": {
+    "before_food": ["ac", "a.c", "a.c.", "before food", "before meals", "before meal", "before breakfast", "bf", "खाने से पहले", "भोजन से पहले", "భోజనానికి ముందు", "சாப்பாட்டுக்கு முன்", "உணவுக்கு முன்", "ಊಟದ ಮೊದಲು", "ಊಟಕ್ಕೆ ಮುಂಚೆ"],
+    "after_food": ["pc", "p.c", "p.c.", "after food", "after meals", "after meal", "af", "खाने के बाद", "भोजन के बाद", "భోజనం తర్వాత", "భోజనం తరువాత", "சாப்பாட்டுக்கு பின்", "உணவுக்கு பின்", "ಊಟದ ನಂತರ", "ಊಟದ ಬಳಿಕ"],
+    "empty_stomach": ["empty stomach", "on empty stomach", "es", "खाली पेट", "ఖాళీ కడుపుతో", "வெறும் வயிற்றில்", "ಖಾಲಿ ಹೊಟ್ಟೆಯಲ್ಲಿ"],
+    "with_food": ["with food", "with meals", "cc", "खाने के साथ", "భోజనంతో", "உணவுடன்", "ಊಟದೊಂದಿಗೆ"],
+    "bedtime": ["hs", "at bedtime", "सोते समय", "నిద్రపోయే ముందు", "தூங்கும் முன்", "ಮಲಗುವ ಮುನ್ನ"]
+  },
+  "time_of_day": {
+    "morning": ["morning", "सुबह", "प्रातः", "ఉదయం", "காலை", "ಬೆಳಿಗ್ಗೆ"],
+    "afternoon": ["afternoon", "noon", "दोपहर", "మధ్యాహ్నం", "மதியம்", "ಮಧ್ಯಾಹ್ನ"],
+    "night": ["night", "evening", "रात", "शाम", "रात्रि", "రాత్రి", "సాయంత్రం", "இரவு", "மாலை", "ರಾತ್ರಿ", "ಸಂಜೆ"]
+  },
+  "routes": {
+    "oral": ["po", "p.o", "oral", "by mouth", "orally"],
+    "topical": ["la", "local application", "topical", "apply"],
+    "IV": ["iv", "i.v", "intravenous"],
+    "IM": ["im", "i.m", "intramuscular"],
+    "SC": ["sc", "s.c", "subcutaneous", "subcut", "s/c"],
+    "inhalation": ["inh", "inhalation", "puff", "puffs", "nebulisation", "nebulization"],
+    "ophthalmic": ["eye", "eye drops", "e/d"]
+  }
+}
