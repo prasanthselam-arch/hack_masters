@@ -6,7 +6,8 @@
 #   ./run.sh restart [backend|frontend]   stop, then start
 #   ./run.sh status                       show what is running
 #   ./run.sh logs [backend|frontend]      follow the logs
-#   ./run.sh setup                        install backend and frontend dependencies
+#   ./run.sh setup                        install everything: system packages (Python, Node; asks for
+#                                         sudo if needed), then backend and frontend dependencies
 #
 # Env: HOST=0.0.0.0 to open the site from another device (e.g. a phone camera on the same Wi-Fi),
 #      RELOAD=1 to auto-reload the backend on code changes.
@@ -14,6 +15,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 'sudo ./run.sh start' etc. would leave root-owned servers and files; run as the real user instead.
+# Only setup needs root, for the system packages, and it drops back to the user itself.
+if [[ $EUID -eq 0 && -n ${SUDO_USER:-} && $SUDO_USER != root && ${1:-} != setup ]]; then
+  exec sudo -u "$SUDO_USER" -H -- "$ROOT/run.sh" "$@"
+fi
+
 RUN="$ROOT/.run"
 HOST="${HOST:-127.0.0.1}"
 BACKEND_PORT=8000
@@ -126,53 +134,120 @@ status_one() {
   fi
 }
 
+# --- setup -----------------------------------------------------------------------------------------
+
+# Python 3.11-3.13: the pinned wheels (pillow, numpy, opencv) don't exist for newer versions yet.
+find_python() {
+  local c
+  for c in ${PYTHON:-} python3.12 python3.13 python3.11 python3; do
+    command -v "$c" >/dev/null 2>&1 || continue
+    "$c" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] <= (3, 13))' 2>/dev/null && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+py_version() { "$1" -c 'import sys; print("%d.%d" % sys.version_info[:2])'; }
+py_has_venv() { "$1" -c 'import ensurepip, venv' 2>/dev/null; }
+node_ok() {
+  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 &&
+    node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)||(a===20&&b>=19)?0:1)'
+}
+as_root() { if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi; }
+
+install_system_deps() {
+  local py missing=()
+  py=$(find_python || true)
+  { [[ -n $py ]] && py_has_venv "$py"; } || missing+=(python)
+  node_ok || missing+=(node)
+  command -v lsof >/dev/null 2>&1 || missing+=(lsof)
+  command -v curl >/dev/null 2>&1 || missing+=(curl)
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    dim "system: $py ($(py_version "$py")), node $(node --version), lsof, curl ok"
+    return 0
+  fi
+
+  if ! command -v apt-get >/dev/null 2>&1; then
+    red "Missing: ${missing[*]}. This script installs them with apt (Ubuntu/Debian) only."
+    dim "Install Python 3.12 with venv, Node 22, lsof and curl yourself, then rerun ./run.sh setup"
+    exit 1
+  fi
+  echo "system: installing ${missing[*]} (needs root)…"
+  export DEBIAN_FRONTEND=noninteractive
+  as_root apt-get update -qq
+  as_root apt-get install -y -qq ca-certificates curl gnupg lsof >/dev/null
+
+  if [[ " ${missing[*]} " == *" python "* ]]; then
+    if [[ -n $py ]]; then
+      as_root apt-get install -y -qq "python$(py_version "$py")-venv" >/dev/null
+    elif ! as_root apt-get install -y -qq python3.12 python3.12-venv >/dev/null 2>&1; then
+      if grep -qi ubuntu /etc/os-release; then
+        dim "system: python3.12 not in this release's repositories, adding the deadsnakes PPA"
+        as_root apt-get install -y -qq software-properties-common >/dev/null
+        as_root add-apt-repository -y ppa:deadsnakes/ppa >/dev/null
+        as_root apt-get update -qq
+        as_root apt-get install -y -qq python3.12 python3.12-venv >/dev/null
+      else
+        red "Could not install Python 3.12. Install Python 3.11-3.13 with its venv package, then rerun."
+        exit 1
+      fi
+    fi
+  fi
+
+  if [[ " ${missing[*]} " == *" node "* ]]; then
+    # Distro node/npm packages are too old for Vite and clash with NodeSource's nodejs package.
+    as_root apt-get remove -y -qq nodejs npm libnode-dev >/dev/null 2>&1 || true
+    curl -fsSL https://deb.nodesource.com/setup_22.x | as_root bash - >/dev/null
+    as_root apt-get install -y -qq nodejs >/dev/null
+  fi
+
+  hash -r
+  py=$(find_python || true)
+  if [[ -z $py ]] || ! py_has_venv "$py" || ! node_ok; then
+    red "System packages still missing after install (python: ${py:-none}, node: $(node --version 2>/dev/null || echo none))."
+    exit 1
+  fi
+  green "system: $py ($(py_version "$py")), node $(node --version) installed"
+}
+
 setup() {
-  local venv="$ROOT/backend/.venv" py="${PYTHON:-python3}"
-  if [[ $EUID -eq 0 && -z ${ALLOW_ROOT:-} ]]; then
-    red "Don't run setup with sudo: it leaves root-owned files that the app can't write to later."
-    dim "Run it as your normal user: ./run.sh setup"
-    dim "If an earlier sudo run left files behind: sudo chown -R \"\$USER\": $ROOT"
-    exit 1
+  local venv="$ROOT/backend/.venv" py
+
+  install_system_deps
+
+  # Under sudo, only the system packages above are installed as root. The project files and the rest
+  # of the setup belong to the user who ran sudo, so the app can write to them later.
+  if [[ $EUID -eq 0 && -n ${SUDO_USER:-} && $SUDO_USER != root ]]; then
+    chown -R "$SUDO_USER": "$ROOT"
+    exec sudo -u "$SUDO_USER" -H -- "$ROOT/run.sh" setup
   fi
-  if ! command -v "$py" >/dev/null; then
-    red "python3 not found. Install Python 3.12 (Ubuntu/Debian: sudo apt install python3 python3-venv)."; exit 1
-  fi
-  if ! "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))'; then
-    red "Python 3.11+ is needed, found $("$py" --version 2>&1). Install 3.12 and rerun with PYTHON=python3.12 ./run.sh setup"; exit 1
-  fi
-  if ! command -v npm >/dev/null; then
-    red "Node.js not found. Install Node 22 (https://nodejs.org or: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install nodejs)."; exit 1
-  fi
-  if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)||(a===20&&b>=19)?0:1)'; then
-    red "Node 20.19+ or 22.12+ is needed, found $(node --version). Install Node 22."; exit 1
+  if [[ $EUID -ne 0 ]] && [[ -n $(find "$ROOT" -path "$ROOT/.git" -prune -o -user 0 -print -quit 2>/dev/null) ]]; then
+    dim "fixing files left owned by root by an earlier sudo run (may ask for your password)"
+    as_root chown -R "$(id -un)": "$ROOT"
   fi
 
-  local owned_by_root
-  owned_by_root=$(find "$ROOT/.run" "$ROOT/backend" "$ROOT/frontend" -maxdepth 2 -user 0 -print -quit 2>/dev/null)
-  if [[ $EUID -ne 0 && -n $owned_by_root ]]; then
-    red "Some files are owned by root (e.g. $owned_by_root), probably from an earlier 'sudo ./run.sh'. Fix with:"
-    dim "  sudo chown -R \"\$USER\": $ROOT"
-    exit 1
-  fi
-
-  echo "backend: creating virtualenv and installing requirements…"
-  # A failed earlier attempt (no python3-venv) leaves a .venv without pip; start again.
-  [[ -x $venv/bin/pip ]] || rm -rf "$venv"
-  [[ -d $venv ]] || "$py" -m venv "$venv" || true
-  if [[ ! -x $venv/bin/pip ]]; then
+  py=$(find_python)
+  echo "backend: creating virtualenv with $py and installing requirements…"
+  # Rebuild a .venv left without pip by a failed attempt, or made with an unsupported Python.
+  if [[ ! -x $venv/bin/pip ]] || ! "$venv/bin/python" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] <= (3, 13))' 2>/dev/null; then
     rm -rf "$venv"
-    local ver; ver=$("$py" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
-    red "Could not create a virtualenv with pip. On Ubuntu/Debian install the venv package, then rerun:"
-    dim "  sudo apt install python3-venv python$ver-venv"
-    dim "  ./run.sh setup"
-    exit 1
   fi
+  [[ -d $venv ]] || "$py" -m venv "$venv"
   "$venv/bin/pip" install -q --upgrade pip
   "$venv/bin/pip" install -q -r "$ROOT/backend/requirements.txt"
-  [[ -f $ROOT/backend/.env ]] || { cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"; echo "created backend/.env, add your GEMINI_API_KEY"; }
+  if [[ ! -f $ROOT/backend/.env ]]; then
+    cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"
+    echo "created backend/.env"
+  fi
+
   echo "frontend: installing packages…"
-  (cd "$ROOT/frontend" && npm install --no-audit --no-fund)
-  green "setup done. Next: ./run.sh start"
+  (cd "$ROOT/frontend" && npm install --no-audit --no-fund --loglevel=error)
+
+  green "setup done."
+  if ! grep -E '^(GEMINI|OPENAI)_API_KEY=.+' "$ROOT/backend/.env" | grep -qv 'your-'; then
+    echo "Next: put your key in backend/.env (GEMINI_API_KEY=...), then ./run.sh start"
+  else
+    echo "Next: ./run.sh start"
+  fi
 }
 
 targets() {
@@ -206,5 +281,5 @@ case "$cmd" in
   setup)
     setup ;;
   *)
-    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+    sed -n '2,13p' "$ROOT/run.sh" | sed 's/^# \{0,1\}//' ;;
 esac
