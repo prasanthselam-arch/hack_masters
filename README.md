@@ -82,9 +82,12 @@ owned by you.
 HOST=0.0.0.0 ./run.sh start    # open from a phone on the same Wi-Fi (camera upload)
 ```
 
+After a `git pull`, just run `./run.sh restart`: start and restart first install any packages added to
+`backend/requirements.txt` or `frontend/package-lock.json` since the last install.
+
 ### Accounts
 
-Anyone can create an account with an email address or a 10-digit mobile number and a password. Each account sees
+Anyone can create an account with an email address or a mobile number (any of 20 countries, India by default) and a password. Each account sees
 only its own profiles and documents, and can hold several profiles, for example parents or children. Requests for
 another account's records return 404. Sessions use an HttpOnly cookie (30 days), passwords are stored as scrypt
 hashes, and repeated wrong passwords are throttled.

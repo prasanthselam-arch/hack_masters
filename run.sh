@@ -63,6 +63,23 @@ wait_up() {
   return 1
 }
 
+# After a git pull that adds packages, start/restart would run with stale dependencies
+# (e.g. "Failed to resolve import"). Reinstall when the dependency file changed since the last install.
+deps_file() { [[ $1 == backend ]] && echo "$ROOT/backend/requirements.txt" || echo "$ROOT/frontend/package-lock.json"; }
+deps_hash() { sha256sum "$(deps_file "$1")" | cut -d' ' -f1; }
+mark_deps() { deps_hash "$1" >"$RUN/$1.deps"; }
+sync_deps() {
+  local name=$1
+  [[ -f $RUN/$name.deps && $(cat "$RUN/$name.deps") == "$(deps_hash "$name")" ]] && return 0
+  echo "$name: dependencies changed, installing…"
+  if [[ $name == backend ]]; then
+    "$ROOT/backend/.venv/bin/pip" install -q -r "$ROOT/backend/requirements.txt" || { red "backend: pip install failed"; return 1; }
+  else
+    (cd "$ROOT/frontend" && npm install --no-audit --no-fund --loglevel=error) || { red "frontend: npm install failed"; return 1; }
+  fi
+  mark_deps "$name"
+}
+
 start_one() {
   local name=$1 port pid
   port=$(port_of "$name")
@@ -78,12 +95,14 @@ start_one() {
   if [[ $name == backend ]]; then
     [[ -x $ROOT/backend/.venv/bin/uvicorn ]] || { red "backend not set up. Run './run.sh setup' first."; return 1; }
     [[ -f $ROOT/backend/.env ]] || { red "backend/.env missing. Copy backend/.env.example and add your API key."; return 1; }
+    sync_deps backend || return 1
     local args=(app.main:app --host "$HOST" --port "$port")
     [[ ${RELOAD:-0} == 1 ]] && args+=(--reload --reload-dir app)
     (cd "$ROOT/backend"; setsid nohup .venv/bin/uvicorn "${args[@]}" </dev/null >"$RUN/backend.log" 2>&1 & echo $! >"$RUN/backend.pid")
   else
     [[ -d $ROOT/frontend/node_modules ]] || { red "frontend not set up. Run './run.sh setup' first."; return 1; }
     find_node >/dev/null || { red "Node 20.19+ or 22.12+ not found. Run './run.sh setup' to install it."; return 1; }
+    sync_deps frontend || return 1
     (cd "$ROOT/frontend"; setsid nohup npm run dev -- --host "$HOST" --port "$port" --strictPort </dev/null >"$RUN/frontend.log" 2>&1 & echo $! >"$RUN/frontend.pid")
   fi
 
@@ -271,6 +290,7 @@ setup() {
   echo "backend: installing requirements…"
   "$venv/bin/pip" install -q --upgrade pip
   "$venv/bin/pip" install -q -r "$ROOT/backend/requirements.txt"
+  mark_deps backend
   if [[ ! -f $ROOT/backend/.env ]]; then
     cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"
     echo "created backend/.env"
@@ -278,6 +298,7 @@ setup() {
 
   echo "frontend: installing packages…"
   (cd "$ROOT/frontend" && npm install --no-audit --no-fund --loglevel=error)
+  mark_deps frontend
 
   green "setup done."
   if ! grep -E '^(GEMINI|OPENAI)_API_KEY=.+' "$ROOT/backend/.env" | grep -qv 'your-'; then
