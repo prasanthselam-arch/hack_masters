@@ -18,6 +18,9 @@ backend/data/
 node_modules/
 frontend/dist/
 
+# run.sh pid files and logs
+.run/
+
 # Eval run artifacts
 eval/runs/
 

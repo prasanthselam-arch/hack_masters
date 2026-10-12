@@ -59,6 +59,18 @@ npm install
 npm run dev                     # http://localhost:5173 (proxies /api to :8000)
 ```
 
+Or use the control script, which runs both servers in the background with logs in `.run/`:
+
+```bash
+./run.sh setup                 # first time: virtualenv, pip and npm install, creates backend/.env
+./run.sh start                 # backend :8000 + frontend :5173
+./run.sh status
+./run.sh restart [backend|frontend]
+./run.sh logs [backend|frontend]
+./run.sh stop
+HOST=0.0.0.0 ./run.sh start    # open from a phone on the same Wi-Fi (camera upload)
+```
+
 To load a demo patient with an ABHA link and a year of records (no LLM calls needed):
 
 ```bash
