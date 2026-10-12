@@ -72,3 +72,31 @@ def test_results_and_medicines_found_when_only_the_document_is_cited(monkeypatch
     assert [x["name"] for x in r["results"]] == ["LDL Cholesterol", "Triglycerides"]
     assert [(m["name"], m["strength"]) for m in r["medications"]] == [("Telma 40", "40 mg"), ("Atorva", "20 mg")]
     assert r["citations"][0]["id"] == doc.id
+
+
+def test_romanised_telugu_gets_a_telugu_reply_label_and_emergency_notice(monkeypatch):
+    eng = create_engine("sqlite://")
+    SQLModel.metadata.create_all(eng)
+    with Session(eng) as db:
+        p = Patient(name="Ramesh")
+        db.add(p)
+        db.commit()
+        answer = chat.ChatAnswer(
+            reply_language="Telugu", understood_question="I have chest pain, what should I do?",
+            answer="మీకు ఛాతీ నొప్పి ఉంటే వెంటనే 112కు కాల్ చేయండి.", cited_record_ids=[], answered_from_records=False,
+            suggest_doctor=True, emergency_symptoms=True)
+        monkeypatch.setattr(chat.llm, "parse", lambda *a, **k: SimpleNamespace(parsed=answer))
+        r = chat.ask(db, p, "naku chest lo noppi ga undi", [], "en")
+
+    assert r["reply_language"] == "te"
+    assert r["understood_question"] == "I have chest pain, what should I do?"
+    assert r["emergency_notice"].startswith("మీకు")
+
+
+def test_reply_language_trusts_the_script_over_the_label():
+    assert chat.reply_language("మీ షుగర్ బాగుంది", "hi") == "te"
+    assert chat.reply_language("तुमची साखर ठीक आहे", "mr") == "mr"
+    assert chat.reply_language("तुम्हारी शुगर ठीक है", "") == "hi"
+    assert chat.reply_language("Your sugar is fine", "te") == "en"
+    assert chat.reply_language("Tu azúcar está bien", "es") == "es"
+    assert chat.reply_language("Your sugar is fine", "") == "en"

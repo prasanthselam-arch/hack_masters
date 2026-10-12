@@ -2,9 +2,9 @@ from collections import defaultdict
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlmodel import Session, select
 
 from app.api.deps import current_account, patient_or_404
@@ -13,25 +13,91 @@ from app.fhir import mapper
 from app.fhir.bundle import patient_bundle
 from app.knowledge import labs
 from app.models.tables import Account, Condition, Document, Encounter, MedicationRequest, Observation, Patient
+from app.services import contact
 from app.services.records import delete_patient as delete_patient_data
+from app.services.records import medication_status
+from app.services.safety import LANGUAGES
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
 
-class PatientIn(BaseModel):
+GENDERS = {"male", "female", "other", "unknown"}
+RELATIONSHIPS = {"self", "spouse", "father", "mother", "son", "daughter", "brother", "sister", "grandfather",
+                 "grandmother", "grandson", "granddaughter", "father_in_law", "mother_in_law", "other"}
+
+
+class PatientFields(BaseModel):
+    @field_validator("name", check_fields=False)
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = " ".join(v.split())
+        if not v:
+            raise ValueError("Please enter a name")
+        if len(v) > 100:
+            raise ValueError("Name is too long")
+        return v
+
+    @field_validator("gender", check_fields=False)
+    @classmethod
+    def _gender(cls, v: str | None) -> str | None:
+        if v in (None, ""):
+            return None
+        if v not in GENDERS:
+            raise ValueError("Unknown gender")
+        return v
+
+    @field_validator("birth_date", check_fields=False)
+    @classmethod
+    def _birth_date(cls, v: date | None) -> date | None:
+        if v is not None and not date(1900, 1, 1) <= v <= date.today():
+            raise ValueError("Date of birth must be between 1900 and today")
+        return v
+
+    @field_validator("phone", check_fields=False)
+    @classmethod
+    def _phone(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        try:
+            return contact.normalize_phone(v)
+        except contact.ContactError as e:
+            raise ValueError(str(e)) from e
+
+    @field_validator("preferred_language", check_fields=False)
+    @classmethod
+    def _lang(cls, v: str | None) -> str | None:
+        if v is not None and v not in LANGUAGES:
+            raise ValueError("Unsupported language")
+        return v
+
+    @field_validator("relationship", check_fields=False)
+    @classmethod
+    def _relationship(cls, v: str | None) -> str | None:
+        if v in (None, ""):
+            return None
+        if v not in RELATIONSHIPS:
+            raise ValueError("Unknown relationship")
+        return v
+
+
+class PatientIn(PatientFields):
     name: str
     gender: str | None = None
     birth_date: date | None = None
     phone: str | None = None
     preferred_language: str = "en"
+    relationship: str | None = None
 
 
-class PatientPatch(BaseModel):
+class PatientPatch(PatientFields):
     name: str | None = None
     gender: str | None = None
     birth_date: date | None = None
     phone: str | None = None
     preferred_language: str | None = None
+    relationship: str | None = None
 
 
 def _patient_out(p: Patient) -> dict[str, Any]:
@@ -44,9 +110,17 @@ def list_patients(acc: Account = Depends(current_account), db: Session = Depends
     return [_patient_out(p) for p in rows]
 
 
+def _self_profile(db: Session, owner_id: str | None) -> Patient | None:
+    return db.exec(select(Patient).where(Patient.owner_id == owner_id, Patient.relationship == "self")).first()
+
+
 @router.post("")
 def create_patient(body: PatientIn, acc: Account = Depends(current_account), db: Session = Depends(get_session)):
     p = Patient(**body.model_dump(), owner_id=acc.id)
+    if p.relationship is None and not db.exec(select(Patient).where(Patient.owner_id == acc.id)).first():
+        p.relationship = "self"
+    if p.relationship == "self" and _self_profile(db, acc.id):
+        raise HTTPException(409, "Your own profile already exists; choose how this person is related to you")
     p.fhir_json = mapper.patient_resource(p)
     db.add(p)
     db.commit()
@@ -61,7 +135,15 @@ def get_patient(p: Patient = Depends(patient_or_404)):
 
 @router.patch("/{patient_id}")
 def update_patient(body: PatientPatch, p: Patient = Depends(patient_or_404), db: Session = Depends(get_session)):
-    for k, v in body.model_dump(exclude_unset=True).items():
+    changes = body.model_dump(exclude_unset=True)
+    if changes.get("name", "") is None or changes.get("preferred_language", "") is None:
+        raise HTTPException(422, "Name and language cannot be empty")
+    if "relationship" in changes and (changes["relationship"] == "self") != (p.relationship == "self"):
+        if p.relationship == "self":
+            raise HTTPException(409, "Your own profile is always 'self'")
+        if _self_profile(db, p.owner_id):
+            raise HTTPException(409, "Your own profile already exists; choose how this person is related to you")
+    for k, v in changes.items():
         setattr(p, k, v)
     p.fhir_json = mapper.patient_resource(p)
     db.add(p)
@@ -72,6 +154,8 @@ def update_patient(body: PatientPatch, p: Patient = Depends(patient_or_404), db:
 
 @router.delete("/{patient_id}")
 def delete_patient(p: Patient = Depends(patient_or_404), db: Session = Depends(get_session)):
+    if p.relationship == "self":
+        raise HTTPException(409, "Your own profile can only be removed by deleting your account")
     delete_patient_data(db, p)
     return {"deleted": True}
 
@@ -81,7 +165,7 @@ def _obs_out(o: Observation) -> dict[str, Any]:
 
 
 def _med_out(m: MedicationRequest) -> dict[str, Any]:
-    return m.model_dump(exclude={"fhir_json"})
+    return {**m.model_dump(exclude={"fhir_json"}), "status": medication_status(m)}
 
 
 @router.get("/{patient_id}/profile")
@@ -100,8 +184,11 @@ def profile(p: Patient = Depends(patient_or_404), db: Session = Depends(get_sess
     unique_conditions: dict[str, Condition] = {}
     for c in sorted(conds, key=lambda c: c.recorded_date or date.min):
         unique_conditions[c.icd10 or c.name.lower()] = c
-    active = [m for m in meds if m.status == "active"]
-    active.sort(key=lambda m: m.authored_on or date.min, reverse=True)
+    # The same prescription saved twice gives two active rows per drug; show each drug and strength once.
+    active_by_drug: dict[tuple[str, str], MedicationRequest] = {}
+    for m in sorted((m for m in meds if medication_status(m) == "active"), key=lambda m: m.authored_on or date.min, reverse=True):
+        active_by_drug.setdefault(((m.generic or m.name).lower(), (m.strength or "").replace(" ", "").lower()), m)
+    active = list(active_by_drug.values())
     vitals = {o.name: o for o in sorted([o for o in obs if o.category == "vital-signs"], key=lambda o: o.effective_date or date.min)}
     return {
         "patient": _patient_out(p),
@@ -145,7 +232,7 @@ def timeline(p: Patient = Depends(patient_or_404), db: Session = Depends(get_ses
             "facility": d.facility, "author": d.author, "languages": d.languages, "handwritten": d.handwritten,
             "abnormal_count": sum(1 for x in o if x.interpretation not in (None, "N")),
             "critical_count": sum(1 for x in o if x.critical),
-            "highlights": [{"name": x.name, "value": x.value_num if x.value_num is not None else x.value_text, "unit": x.unit,
+            "highlights": [{"name": x.name, "value": x.value_text or x.value_num, "unit": x.unit,
                             "flag": x.interpretation} for x in sorted(o, key=lambda x: x.interpretation in (None, "N"))[:4]],
             "medications": [f"{m.name} {m.strength or ''}".strip() for m in by_doc_meds.get(d.id, [])][:5],
             "conditions": [c.name for c in by_doc_cond.get(d.id, [])][:4],
@@ -157,10 +244,10 @@ def timeline(p: Patient = Depends(patient_or_404), db: Session = Depends(get_ses
 
 @router.get("/{patient_id}/medications")
 def medications(status: str | None = None, p: Patient = Depends(patient_or_404), db: Session = Depends(get_session)):
-    q = select(MedicationRequest).where(MedicationRequest.patient_id == p.id)
+    rows = db.exec(select(MedicationRequest).where(MedicationRequest.patient_id == p.id)).all()
     if status:
-        q = q.where(MedicationRequest.status == status)
-    rows = sorted(db.exec(q).all(), key=lambda m: m.authored_on or date.min, reverse=True)
+        rows = [m for m in rows if medication_status(m) == status]
+    rows = sorted(rows, key=lambda m: m.authored_on or date.min, reverse=True)
     return [_med_out(m) for m in rows]
 
 

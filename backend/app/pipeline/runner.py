@@ -84,7 +84,8 @@ def process_document(doc_id: str) -> None:
             cls: Classification = r.parsed
             doc.classification = cls.model_dump(mode="json")
             doc.doc_type, doc.languages, doc.handwritten, doc.title = cls.document_type.value, cls.languages, cls.handwritten, cls.title
-            record("classifying", t0, model=r.model, tokens=r.input_tokens + r.output_tokens)
+            turned = ex.orient(prepared, cls)
+            record("classifying", t0, model=r.model, tokens=r.input_tokens + r.output_tokens, **({"note": turned} if turned else {}))
 
             step("extracting", 32)
             t0 = time.perf_counter()
@@ -104,7 +105,7 @@ def process_document(doc_id: str) -> None:
                 step("verifying", 65)
                 t0 = time.perf_counter()
                 try:
-                    r = ex.verify(prepared, first, hints)
+                    r = ex.verify(prepared, first, hints, cls)
                     vr = r.parsed
                     final = vr.corrected
                     doc.verified_extraction = vr.model_dump(mode="json")
@@ -155,6 +156,7 @@ def run_on_file(path: Path, mime: str, sex: str | None = None, verify: bool = Tr
     t0 = time.perf_counter()
     r = ex.classify(prepared)
     cls, models["classify"] = r.parsed, r.model
+    ex.orient(prepared, cls)
     timings["classify"] = int((time.perf_counter() - t0) * 1000)
     t0 = time.perf_counter()
     r = ex.extract(prepared, cls)
@@ -165,7 +167,7 @@ def run_on_file(path: Path, mime: str, sex: str | None = None, verify: bool = Tr
     if verify:
         t0 = time.perf_counter()
         try:
-            r = ex.verify(prepared, first, suspicious_paths(first, sex))
+            r = ex.verify(prepared, first, suspicious_paths(first, sex), cls)
             vr: VerificationResult = r.parsed
             models["verify"] = r.model
             out["verified"] = build_review(vr.corrected, cls, sex, first, vr)

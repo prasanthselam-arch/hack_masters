@@ -10,7 +10,10 @@
     "trends": "Trends",
     "medications": "Medicines",
     "chat": "Ask Copilot",
-    "abha": "ABHA & Records"
+    "abha": "ABHA & Records",
+    "profiles": "Family & account",
+    "group_records": "Your records",
+    "group_assist": "Assistant & sharing"
   },
   "common": {
     "loading": "Loading…",
@@ -49,7 +52,8 @@
     "phone": "Mobile number",
     "language": "Preferred language",
     "create": "Create profile",
-    "why_gender": "Used to pick the right reference ranges for lab results."
+    "why_gender": "Used to pick the right reference ranges for lab results.",
+    "unknown": "Not specified"
   },
   "dashboard": {
     "greeting": "Hello, {{name}}",
@@ -78,7 +82,8 @@
     "last_record": "Last record",
     "critical_title": "Critical results",
     "critical_note": "One or more results are in a critical range. Please contact your doctor today or seek urgent care.",
-    "review_pending_one": "1 document is waiting for your review"
+    "review_pending_one": "1 document is waiting for your review",
+    "ask_cta": "Ask Copilot"
   },
   "flags": {
     "N": "Normal",
@@ -137,7 +142,13 @@
       "finalizing": "Finalising",
       "review": "Ready for review",
       "confirmed": "Saved",
-      "failed": "Failed"
+      "failed": "Failed",
+      "fhir": "Saved as FHIR"
+    },
+    "queue_empty": "Nothing uploaded yet",
+    "reject": {
+      "file-too-large": "file is larger than 25 MB",
+      "file-invalid-type": "use PDF, JPG, PNG or WEBP"
     }
   },
   "review": {
@@ -208,7 +219,10 @@
     "dose": "Dose",
     "status_confirmed": "Confirmed",
     "status_provisional": "Provisional",
-    "items_one": "{{count}} item"
+    "items_one": "{{count}} item",
+    "range_low": "low",
+    "range_high": "high",
+    "duration_hint": "5 days"
   },
   "docview": {
     "summary": "Simple explanation",
@@ -232,7 +246,45 @@
     "delete_confirm": "Delete this document and its data?",
     "trends": "Changes over time",
     "abnormal": "Results outside the range",
-    "medicines": "Medicines"
+    "medicines": "Medicines",
+    "fhir_kicker": "ABDM health record · FHIR R4",
+    "fhir_readable": "Readable",
+    "fhir_explainer": "This is the form in which the record is shared through ABDM: an HL7 FHIR R4 document bundle using the NRCeS profiles. Standard codes (LOINC for tests, SNOMED CT for record types, ICD-10 for diagnoses) let any hospital or lab system read it.",
+    "fhir_patient": "Patient",
+    "fhir_practitioner": "Doctor",
+    "fhir_org": "Facility",
+    "fhir_encounter": "Visit",
+    "fhir_conditions": "Diagnoses",
+    "fhir_meds": "Medicines prescribed",
+    "fhir_report": "Lab report",
+    "fhir_results": "Results",
+    "fhir_sections": "Record sections",
+    "fhir_attachment": "Original document attached",
+    "fhir_entries_one": "{{count}} entry",
+    "fhir_entries_other": "{{count}} entries",
+    "fhir_name": "Name",
+    "fhir_code": "Code",
+    "fhir_status": "Status",
+    "fhir_date": "Date",
+    "fhir_medicine": "Medicine",
+    "fhir_dosage": "How to take",
+    "fhir_prescriber": "Prescribed by",
+    "fhir_test": "Test",
+    "fhir_value": "Result",
+    "fhir_range": "Reference range",
+    "pipeline": "AI pipeline",
+    "when": {
+      "MORN": "Morning",
+      "NOON": "Afternoon",
+      "AFT": "Afternoon",
+      "EVE": "Evening",
+      "NIGHT": "Night",
+      "HS": "Bedtime",
+      "ACM": "Before breakfast",
+      "PCM": "After breakfast",
+      "AC": "Before meals",
+      "PC": "After meals"
+    }
   },
   "timeline": {
     "title": "Health timeline",
@@ -297,7 +349,23 @@
     "range": "Range",
     "view_trend": "See trend",
     "show_more": "Show {{count}} more",
-    "show_less": "Show less"
+    "show_less": "Show less",
+    "audio_mode": "Audio mode",
+    "audio_mode_hint": "Read every reply aloud, and send spoken questions straight away",
+    "mic_start": "Speak your question",
+    "mic_stop": "Stop listening",
+    "speak_now": "Listening… speak now",
+    "listening": "Listening in {{language}}",
+    "transcribing": "Turning your speech into text…",
+    "voice_lang": "Voice language",
+    "replied_in": "Replied in {{language}}",
+    "understood": "Understood as",
+    "preparing_audio": "Preparing audio…",
+    "voice_error": "Voice is unavailable right now. Please try again.",
+    "mic_denied": "Microphone access is blocked. Allow it from the icon in the browser's address bar.",
+    "mic_insecure": "Voice input works when the app is opened at localhost or over https.",
+    "mic_unsupported": "This browser does not support voice input.",
+    "no_speech": "I didn't catch that. Please try again."
   },
   "abha": {
     "title": "ABHA & health records",
@@ -328,7 +396,8 @@
     "export_body": "Download all your confirmed records as an ABDM-style FHIR R4 bundle to share with any doctor or app.",
     "export_btn": "Download FHIR bundle",
     "unlink": "Unlink",
-    "imported_one": "1 record imported"
+    "imported_one": "1 record imported",
+    "unlink_confirm": "Unlink this ABHA from the profile? Imported records stay."
   },
   "auth": {
     "sign_in": "Sign in",
@@ -347,11 +416,87 @@
     "sign_out": "Sign out",
     "private_note": "Only you can see the records in your account.",
     "signed_in_as": "Signed in as",
-    "hero_title": "All your health records, explained simply"
+    "hero_title": "All your health records, explained simply",
+    "show_password": "Show password",
+    "hide_password": "Hide password"
   },
   "profile": {
     "add": "Add family member",
     "add_title": "Add a family member",
     "add_sub": "Keep a separate health record for a parent, child or spouse in your account."
+  },
+  "contact": {
+    "country": "Country code",
+    "required": "This field is required",
+    "email_invalid": "Enter a valid email address, like name@example.com",
+    "email_ok": "Valid email address",
+    "phone_ok": "Valid mobile number: {{number}}",
+    "phone_digits": "Mobile numbers in {{country}} have {{want}} digits — you entered {{count}}",
+    "phone_invalid": "This doesn't look like a valid mobile number for {{country}}",
+    "login_hint": "Type a mobile number to pick its country, or start with + and the country code"
+  },
+  "profiles": {
+    "title": "Manage family",
+    "subtitle": "Add, edit or remove the family members whose health records you keep, and manage your sign-in.",
+    "family": "Family members",
+    "account": "Your account",
+    "viewing": "Viewing now",
+    "open": "Open records",
+    "age_one": "{{count}} year",
+    "age_other": "{{count}} years",
+    "speaks": "Prefers {{language}}",
+    "edit_title": "Edit {{name}}",
+    "edit_sub": "Changes apply to this profile only.",
+    "delete_confirm": "Remove {{name}}? All of their documents and health records will be deleted permanently.",
+    "relationship": "Relationship to you",
+    "choose_relationship": "Choose relationship",
+    "relationship_required": "Please choose how this person is related to you",
+    "dob_invalid": "Enter a date between 1900 and today",
+    "details": "Sign-in details",
+    "member_since": "Member since {{date}}",
+    "login_hint": "Changing this needs your current password.",
+    "current_password": "Current password",
+    "password_needed": "Enter your current password to change the sign-in email or mobile",
+    "saved": "Saved",
+    "change_password": "Change password",
+    "change_password_sub": "Other devices will be signed out.",
+    "new_password": "New password",
+    "confirm_password": "Confirm new password",
+    "password_mismatch": "The passwords do not match",
+    "password_changed": "Password changed. Other devices were signed out.",
+    "delete_account": "Delete account",
+    "delete_account_sub": "Permanently delete your account, every profile and all uploaded documents.",
+    "delete_forever": "Delete everything",
+    "manage": "Manage family",
+    "you": "You",
+    "you_sub": "The account holder. You can edit your details here.",
+    "family_sub": "Edit anyone's details or remove them. Removing a member also deletes their records.",
+    "family_empty": "No family members yet. Add a parent, spouse or child to keep their records here too.",
+    "remove": "Remove",
+    "self_note": "Your own profile stays while your account exists. To remove it, delete your account below."
+  },
+  "relationship": {
+    "self": "You",
+    "spouse": "Spouse",
+    "father": "Father",
+    "mother": "Mother",
+    "son": "Son",
+    "daughter": "Daughter",
+    "brother": "Brother",
+    "sister": "Sister",
+    "grandfather": "Grandfather",
+    "grandmother": "Grandmother",
+    "grandson": "Grandson",
+    "granddaughter": "Granddaughter",
+    "father_in_law": "Father-in-law",
+    "mother_in_law": "Mother-in-law",
+    "other": "Other"
+  },
+  "viewer": {
+    "previous": "Previous page",
+    "next": "Next page",
+    "zoom_out": "Zoom out",
+    "zoom_in": "Zoom in",
+    "rotate": "Rotate page"
   }
 }

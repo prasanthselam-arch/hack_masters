@@ -16,13 +16,15 @@ class Settings(BaseSettings):
     ca_bundle: str | None = None
 
     # Comma-separated fallback chains; verification deliberately starts on a different model.
-    gemini_extract_models: str = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.8-flash,gemini-3.1-flash-lite"
-    gemini_verify_models: str = "gemini-3-flash-preview,gemini-3.5-flash,gemini-3.8-flash,gemini-3.1-flash-lite"
-    gemini_fast_models: str = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite"
+    gemini_extract_models: str = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.8-flash,gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-2.5-flash-lite"
+    gemini_verify_models: str = "gemini-3-flash-preview,gemini-3.5-flash,gemini-3.8-flash,gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-2.5-flash-lite"
+    gemini_fast_models: str = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-2.5-flash-lite"
     openai_extract_models: str = "gpt-5.4"
     openai_verify_models: str = "gpt-5.4"
     openai_fast_models: str = "gpt-5.4-mini"
     gemini_thinking_level: str | None = "low"
+    gemini_tts_models: str = "gemini-3.8-flash-lite-tts,gemini-3.8-flash-tts,gemini-2.5-flash-preview-tts"
+    gemini_tts_voice: str = "Kore"
     openai_reasoning_effort: str = "low"
     enable_verification: bool = True
 

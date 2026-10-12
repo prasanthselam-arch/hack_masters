@@ -44,6 +44,7 @@ class Classification(BaseModel):
     handwritten: bool = Field(description="True if the clinically relevant content is handwritten")
     legibility: Legibility
     title: str | None = Field(description="Short title, e.g. 'Complete Blood Count' or 'OPD prescription'")
+    rotation: int = Field(default=0, description="Clockwise degrees (0, 90, 180 or 270) the page image must be turned for its text to read upright")
     reasoning: str = Field(description="One sentence on why this type was chosen")
 
 

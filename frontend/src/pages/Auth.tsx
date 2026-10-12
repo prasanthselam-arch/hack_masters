@@ -2,7 +2,8 @@ import { useMutation } from '@tanstack/react-query'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { WelcomeHero } from '@/components/Hero'
+import { LoginInput, type LoginValue } from '@/components/ContactInputs'
+import { AuroraPage, WelcomeHero } from '@/components/Hero'
 import { LanguageSwitcher } from '@/components/Layout'
 import { Disclaimer } from '@/components/medical'
 import { Button, Card, ErrorNote, Input, Label } from '@/components/ui'
@@ -15,37 +16,40 @@ export default function AuthPage() {
   const { t } = useTranslation()
   const { signedIn } = useAuth()
   const [mode, setMode] = useState<Mode>('sign_in')
-  const [form, setForm] = useState({ name: '', login: '', password: '' })
+  const [form, setForm] = useState({ name: '', password: '' })
+  const [login, setLogin] = useState<LoginValue>({ value: '', valid: false, kind: 'empty' })
+  const [tried, setTried] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   const submit = useMutation({
     mutationFn: () =>
       mode === 'sign_up'
-        ? api.register({ name: form.name.trim(), login: form.login.trim(), password: form.password })
-        : api.login({ login: form.login.trim(), password: form.password }),
+        ? api.register({ name: form.name.trim(), login: login.value, password: form.password })
+        : api.login({ login: login.value, password: form.password }),
     onSuccess: signedIn,
   })
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    submit.mutate()
+    setTried(true)
+    if (login.valid && (!signUp || (form.name.trim() && form.password.length >= 8))) submit.mutate()
   }
   const switchMode = (m: Mode) => {
     setMode(m)
+    setTried(false)
     submit.reset()
   }
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
   const signUp = mode === 'sign_up'
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-brand-50 via-white to-sky-50">
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-2 lg:py-20">
+    <AuroraPage>
         <WelcomeHero title={t('auth.hero_title')} subtitle={t('auth.private_note')} />
 
-        <Card className="p-6 sm:p-8">
+        <Card className="animate-fade-up rounded-3xl p-6 shadow-[var(--shadow-lift)] sm:p-9">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-900">{signUp ? t('auth.create_title') : t('auth.welcome')}</h2>
+              <h2 className="text-[1.65rem] font-bold tracking-tight text-slate-900">{signUp ? t('auth.create_title') : t('auth.welcome')}</h2>
               <p className="mt-1 text-sm text-slate-500">{signUp ? t('auth.create_sub') : t('auth.welcome_sub')}</p>
             </div>
             <LanguageSwitcher className="w-36 shrink-0" />
@@ -58,10 +62,10 @@ export default function AuthPage() {
                 <Input required value={form.name} onChange={set('name')} autoComplete="name" autoFocus />
               </label>
             )}
-            <label className="block">
-              <Label hint={t('auth.login_hint')}>{t('auth.login')}</Label>
-              <Input required value={form.login} onChange={set('login')} autoComplete="username" autoFocus={!signUp} />
-            </label>
+            <div>
+              <Label>{t('auth.login')}</Label>
+              <LoginInput onChange={setLogin} showErrors={tried} autoFocus={!signUp} hint={t('contact.login_hint')} />
+            </div>
             <label className="block">
               <Label hint={signUp ? t('auth.password_hint') : undefined}>{t('auth.password')}</Label>
               <div className="relative">
@@ -78,7 +82,8 @@ export default function AuthPage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                  aria-label={t('auth.password')}
+                  aria-label={t(showPassword ? 'auth.hide_password' : 'auth.show_password')}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -104,7 +109,6 @@ export default function AuthPage() {
           </p>
           <Disclaimer className="mt-6" />
         </Card>
-      </div>
-    </div>
+    </AuroraPage>
   )
 }

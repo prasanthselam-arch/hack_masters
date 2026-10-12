@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 
 from app.knowledge import drugs, labs
 from app.models.tables import Condition, Document, Encounter, MedicationRequest, Observation, Patient
+from app.services.records import medication_status
 
 FLAG_WORDS = {"N": "normal", "L": "low", "H": "high", "LL": "critically low", "HH": "critically high", "A": "abnormal"}
 
@@ -43,7 +44,7 @@ def med_fact(m: MedicationRequest) -> dict[str, Any]:
         "id": m.id, "name": m.name, "generic": m.generic, "strength": m.strength, "form": m.form,
         "schedule": (m.frequency_raw or "") + (f" ({', '.join(sched)})" if sched else ""),
         "frequency_code": m.frequency_code, "meal": (m.meal_relation or "").replace("_", " ") or None,
-        "duration_days": m.duration_days, "instructions": m.instructions, "status": m.status,
+        "duration_days": m.duration_days, "instructions": m.instructions, "status": medication_status(m),
         "commonly_used_for": d.common_use if d else None, "drug_class": m.drug_class,
         "prescribed_on": m.authored_on.isoformat() if m.authored_on else None, "prescriber": m.prescriber,
     }
@@ -122,7 +123,7 @@ def patient_facts(db: Session, patient: Patient) -> dict[str, Any]:
                     "first": min((d.document_date for d in docs if d.document_date), default=None),
                     "last": max((d.document_date for d in docs if d.document_date), default=None)},
         "conditions": [cond_fact(c) for c in seen.values()],
-        "active_medications": [med_fact(m) for m in meds if m.status == "active"],
+        "active_medications": [med_fact(m) for m in meds if medication_status(m) == "active"],
         "latest_results": latest,
         "abnormal_latest": [f for f in latest if f.get("flag") not in (None, "normal")],
         "trends": trends,

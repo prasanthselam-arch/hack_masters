@@ -42,9 +42,9 @@ export default function UploadPage() {
 
   const upload = useMutation({
     mutationFn: (files: File[]) => api.upload(patient.id, files),
-    onSuccess: refreshAll,
+    onSettled: refreshAll,
   })
-  const reprocess = useMutation({ mutationFn: api.reprocess, onSuccess: refreshAll })
+  const reprocess = useMutation({ mutationFn: api.reprocess, onSettled: refreshAll })
 
   const { getRootProps, getInputProps, isDragActive, fileRejections, open } = useDropzone({
     accept: ACCEPT,
@@ -96,8 +96,13 @@ export default function UploadPage() {
             </div>
           </div>
           {upload.error && <ErrorNote error={upload.error} />}
+          {reprocess.error && <ErrorNote error={reprocess.error} />}
           {fileRejections.length > 0 && (
-            <ErrorNote error={fileRejections.map((r) => `${r.file.name}: ${r.errors.map((e) => e.message).join(', ')}`).join(' · ')} />
+            <ErrorNote
+              error={fileRejections
+                .map((r) => `${r.file.name}: ${r.errors.map((e) => t(`upload.reject.${e.code}`, { defaultValue: e.message })).join(', ')}`)
+                .join(' · ')}
+            />
           )}
 
           <Card>
@@ -105,11 +110,11 @@ export default function UploadPage() {
             {docs.data && docs.data.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {docs.data.slice(0, 15).map((d) => (
-                  <UploadRow key={d.id} d={d} onRetry={() => reprocess.mutate(d.id)} />
+                  <UploadRow key={d.id} d={d} retrying={reprocess.isPending && reprocess.variables === d.id} onRetry={() => reprocess.mutate(d.id)} />
                 ))}
               </ul>
             ) : (
-              <p className="px-5 py-6 text-sm text-slate-500">—</p>
+              <p className="px-5 py-6 text-sm text-slate-500">{t('upload.queue_empty')}</p>
             )}
           </Card>
         </div>
@@ -133,13 +138,13 @@ export default function UploadPage() {
   )
 }
 
-function UploadRow({ d, onRetry }: { d: DocumentInfo; onRetry: () => void }) {
+function UploadRow({ d, retrying, onRetry }: { d: DocumentInfo; retrying: boolean; onRetry: () => void }) {
   const { t } = useTranslation()
   const lang = useLang()
   const Icon = d.mime_type === 'application/pdf' ? FileText : FileImage
   const timing = d.pipeline_log
     .filter((l) => l.model)
-    .map((l) => `${t(`upload.stage.${l.stage}`, { defaultValue: l.stage })} ${(l.ms / 1000).toFixed(1)}s`)
+    .map((l) => `${t(`upload.stage.${l.stage}`, { defaultValue: l.stage })} ${((l.ms ?? 0) / 1000).toFixed(1)}s`)
     .join(' · ')
   return (
     <li className="px-5 py-4">
@@ -178,7 +183,7 @@ function UploadRow({ d, onRetry }: { d: DocumentInfo; onRetry: () => void }) {
             </Link>
           )}
           {d.status === 'failed' && (
-            <Button size="sm" variant="secondary" onClick={onRetry}>
+            <Button size="sm" variant="secondary" loading={retrying} onClick={onRetry}>
               <RotateCcw className="h-4 w-4" />
               {t('upload.retry_btn')}
             </Button>

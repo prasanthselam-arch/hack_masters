@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, ArrowRight, ClipboardCheck, FileText, FlaskConical, HeartPulse, Pill, ShieldCheck, Sparkles, Stethoscope, Upload } from 'lucide-react'
+import { Activity, ArrowRight, ClipboardCheck, FileText, FlaskConical, HeartPulse, MessageCircleHeart, Pill, ShieldCheck, Sparkles, Stethoscope, Upload } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { CriticalBanner, FlagBadge, MedSchedule } from '@/components/medical'
 import { SummaryView } from '@/components/SummaryView'
-import { Badge, Button, Card, CardHeader, Empty, ErrorNote, PageHeader, Spinner } from '@/components/ui'
+import { Badge, Button, Card, CardHeader, Empty, ErrorNote, Spinner } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useActivePatient, useLang } from '@/lib/patient'
 import { fmtDate, fmtNum, rangeText } from '@/lib/utils'
@@ -36,25 +36,18 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t('dashboard.greeting', { name: patient.name.split(' ')[0] })}
-        subtitle={
-          <>
-            {t('dashboard.subtitle')}
-            {p.last_record_date && (
-              <span className="ml-2 text-sm text-slate-400">
-                {t('dashboard.last_record')}: {fmtDate(p.last_record_date, lang)}
-              </span>
-            )}
-          </>
-        }
-        action={
-          <Link to="/upload">
-            <Button>
-              <Upload className="h-4 w-4" />
-              {t('dashboard.upload_cta')}
-            </Button>
-          </Link>
+      <Hero
+        name={patient.name.split(' ')[0]}
+        lastRecord={p.last_record_date ? fmtDate(p.last_record_date, lang) : null}
+        stats={
+          hasData
+            ? [
+                { icon: <FileText className="h-5 w-5" />, label: t('dashboard.docs'), value: c.documents, to: '/timeline', tone: 'from-sky-400 to-indigo-500' },
+                { icon: <FlaskConical className="h-5 w-5" />, label: t('dashboard.results'), value: c.results, to: '/trends', tone: 'from-brand-300 to-brand-600' },
+                { icon: <Pill className="h-5 w-5" />, label: t('dashboard.active_meds'), value: c.medications, to: '/medications', tone: 'from-amber-300 to-orange-500' },
+                { icon: <Stethoscope className="h-5 w-5" />, label: t('dashboard.conditions'), value: c.conditions, tone: 'from-rose-300 to-pink-500' },
+              ]
+            : []
         }
       />
 
@@ -63,7 +56,7 @@ export default function Dashboard() {
       {p.critical.length > 0 && (
         <CriticalBanner
           title={t('dashboard.critical_title')}
-          items={p.critical.map((o) => ({ label: o.name, detail: `${fmtNum(o.value_num ?? o.value_text)} ${o.unit ?? ''}`.trim() }))}
+          items={p.critical.map((o) => ({ label: o.name, detail: `${o.value_text ?? fmtNum(o.value_num)} ${o.unit ?? ''}`.trim() }))}
           note={t('dashboard.critical_note')}
         />
       )}
@@ -94,21 +87,17 @@ export default function Dashboard() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat icon={<FileText className="h-5 w-5" />} label={t('dashboard.docs')} value={c.documents} to="/timeline" />
-            <Stat icon={<FlaskConical className="h-5 w-5" />} label={t('dashboard.results')} value={c.results} to="/trends" />
-            <Stat icon={<Pill className="h-5 w-5" />} label={t('dashboard.active_meds')} value={c.medications} to="/medications" />
-            <Stat icon={<Stethoscope className="h-5 w-5" />} label={t('dashboard.conditions')} value={c.conditions} />
-          </div>
-
           <Card className="overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-brand-600 to-brand-700 px-5 py-4 text-white">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="h-5 w-5" />
-                <h3 className="font-semibold">{t('dashboard.ai_summary')}</h3>
+            <div className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden bg-gradient-to-r from-brand-700 via-brand-600 to-sky-600 px-5 py-4 text-white">
+              <div className="bg-dots pointer-events-none absolute inset-0 opacity-60" />
+              <div className="relative flex items-center gap-3">
+                <span className="rounded-xl bg-white/15 p-2 ring-1 ring-white/25 backdrop-blur">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <h3 className="text-lg font-semibold">{t('dashboard.ai_summary')}</h3>
               </div>
               {!wantSummary && (
-                <Button variant="secondary" onClick={() => setWantSummary(true)} disabled={!hasData}>
+                <Button variant="secondary" className="relative" onClick={() => setWantSummary(true)} disabled={!hasData}>
                   <Sparkles className="h-4 w-4 text-brand-600" />
                   {t('dashboard.generate_summary')}
                 </Button>
@@ -133,10 +122,10 @@ export default function Dashboard() {
               {p.abnormal_latest.length === 0 ? (
                 <p className="px-5 py-6 text-sm text-slate-500">{t('dashboard.abnormal_empty')}</p>
               ) : (
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-900/[0.05]">
                   {p.abnormal_latest.map((o) => (
                     <li key={o.id}>
-                      <Link to={o.document_id ? `/documents/${o.document_id}` : '/trends'} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+                      <Link to={o.document_id ? `/documents/${o.document_id}` : '/trends'} className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-brand-50/40">
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900">{o.name}</p>
                           <p className="text-xs text-slate-500">
@@ -145,7 +134,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <span className="font-semibold text-slate-900">
-                            {fmtNum(o.value_num ?? o.value_text)} <span className="text-xs font-normal text-slate-500">{o.unit}</span>
+                            {o.value_text ?? fmtNum(o.value_num)} <span className="text-xs font-normal text-slate-500">{o.unit}</span>
                           </span>
                           <FlagBadge flag={o.interpretation} />
                         </div>
@@ -161,7 +150,7 @@ export default function Dashboard() {
                 icon={<Pill className="h-5 w-5" />}
                 title={t('dashboard.meds_title')}
                 action={
-                  <Link to="/medications" className="text-sm text-brand-700 hover:underline">
+                  <Link to="/medications" aria-label={t('nav.medications')} className="text-sm text-brand-700 hover:underline">
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 }
@@ -169,7 +158,7 @@ export default function Dashboard() {
               {p.active_medications.length === 0 ? (
                 <p className="px-5 py-6 text-sm text-slate-500">{t('dashboard.meds_empty')}</p>
               ) : (
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-900/[0.05]">
                   {p.active_medications.map((m) => (
                     <li key={m.id} className="flex flex-col gap-1.5 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -192,7 +181,7 @@ export default function Dashboard() {
               ) : (
                 <ul className="flex flex-wrap gap-2 p-5">
                   {p.conditions.map((cd) => (
-                    <li key={cd.id} className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
+                    <li key={cd.id} className="rounded-xl bg-gradient-to-br from-white to-slate-50 px-3.5 py-2.5 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.06]">
                       <p className="text-sm font-medium text-slate-900">{cd.name}</p>
                       <p className="text-xs text-slate-500">
                         {cd.icd10 && <span className="font-mono">{cd.icd10}</span>}
@@ -211,10 +200,10 @@ export default function Dashboard() {
               ) : (
                 <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3">
                   {p.latest_vitals.map((v) => (
-                    <div key={v.id} className="rounded-xl bg-slate-50 p-3">
+                    <div key={v.id} className="rounded-xl bg-gradient-to-br from-white to-brand-50/50 p-3.5 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.06]">
                       <p className="truncate text-xs text-slate-500">{v.name}</p>
-                      <p className="mt-0.5 text-lg font-semibold text-slate-900">
-                        {fmtNum(v.value_num ?? v.value_text)} <span className="text-xs font-normal text-slate-500">{v.unit}</span>
+                      <p className="mt-0.5 font-display text-xl font-bold text-slate-900 tabular-nums">
+                        {v.value_text ?? fmtNum(v.value_num)} <span className="text-xs font-normal text-slate-500">{v.unit}</span>
                       </p>
                       <FlagBadge flag={v.interpretation} />
                     </div>
@@ -229,25 +218,92 @@ export default function Dashboard() {
   )
 }
 
-function Stat({ icon, label, value, to }: { icon: ReactNode; label: string; value: number; to?: string }) {
-  const body = (
-    <Card className="flex items-center gap-3 p-4 transition-shadow hover:shadow-md">
-      <div className="rounded-xl bg-brand-50 p-2.5 text-brand-600">{icon}</div>
-      <div>
-        <p className="text-2xl font-semibold text-slate-900">{value}</p>
-        <p className="text-sm text-slate-500">{label}</p>
+interface HeroStat {
+  icon: ReactNode
+  label: string
+  value: number
+  to?: string
+  tone: string
+}
+
+function Hero({ name, lastRecord, stats }: { name: string; lastRecord: string | null; stats: HeroStat[] }) {
+  const { t } = useTranslation()
+  const lang = useLang()
+  const today = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { weekday: 'long', day: 'numeric', month: 'long' })
+  return (
+    <section className="relative overflow-hidden rounded-3xl bg-ink-900 text-white shadow-[var(--shadow-lift)]">
+      <div className="bg-dots pointer-events-none absolute inset-0 opacity-40" />
+      <div className="animate-float pointer-events-none absolute -top-28 -right-20 h-80 w-80 rounded-full bg-brand-500/30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-sky-500/15 blur-3xl" />
+      <svg className="pointer-events-none absolute right-0 bottom-0 h-28 w-[28rem] max-w-full text-brand-400/25" viewBox="0 0 400 100" fill="none" aria-hidden>
+        <path d="M0 70h120l14-30 22 52 18-40 12 18h214" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+
+      <div className="relative flex flex-wrap items-end justify-between gap-6 p-6 sm:p-8">
+        <div className="max-w-xl">
+          <p className="text-xs font-semibold tracking-[0.14em] text-brand-300 uppercase">{today}</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{t('dashboard.greeting', { name })}</h1>
+          <p className="mt-2 text-slate-300">{t('dashboard.subtitle')}</p>
+          {lastRecord && (
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.07] px-3 py-1 text-xs text-slate-300 ring-1 ring-white/10">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shadow-[0_0_8px_rgb(69_194_165)]" />
+              {t('dashboard.last_record')}: {lastRecord}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/upload">
+            <Button className="bg-none bg-white text-ink-900 shadow-[0_10px_30px_-10px_rgb(255_255_255/0.5)] hover:bg-brand-50">
+              <Upload className="h-4 w-4" />
+              {t('dashboard.upload_cta')}
+            </Button>
+          </Link>
+          <Link to="/chat">
+            <Button variant="ghost" className="bg-white/[0.08] text-white ring-1 ring-white/15 hover:bg-white/15 hover:text-white">
+              <MessageCircleHeart className="h-4 w-4" />
+              {t('dashboard.ask_cta')}
+            </Button>
+          </Link>
+        </div>
       </div>
-    </Card>
+
+      {stats.length > 0 && (
+        <div className="relative grid grid-cols-2 gap-px border-t border-white/[0.08] bg-white/[0.06] md:grid-cols-4">
+          {stats.map((s) => {
+            const body = (
+              <div className="group flex h-full items-center gap-3 bg-ink-900/80 px-5 py-4 transition-colors hover:bg-ink-800/80 sm:px-6">
+                <span className={`rounded-xl bg-gradient-to-br ${s.tone} p-2.5 text-white shadow-lg ring-1 ring-white/20`}>{s.icon}</span>
+                <div className="min-w-0">
+                  <p className="font-display text-2xl font-bold tabular-nums">{s.value}</p>
+                  <p className="truncate text-xs text-slate-400 group-hover:text-slate-300">{s.label}</p>
+                </div>
+                {s.to && <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-slate-300" />}
+              </div>
+            )
+            return s.to ? (
+              <Link key={s.label} to={s.to}>
+                {body}
+              </Link>
+            ) : (
+              <div key={s.label}>{body}</div>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
-  return to ? <Link to={to}>{body}</Link> : body
 }
 
 function PendingReview({ patientId, count }: { patientId: string; count: number }) {
   const { t } = useTranslation()
-  const docs = useQuery({ queryKey: ['documents', patientId], queryFn: () => api.documents(patientId) })
+  const docs = useQuery({
+    queryKey: ['documents', patientId],
+    queryFn: () => api.documents(patientId),
+    refetchInterval: (q) => (q.state.data?.some((d) => d.status === 'review') ? false : 4000),
+  })
   const first = docs.data?.find((d) => d.status === 'review')
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50 px-5 py-4 ring-1 ring-amber-200">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4 shadow-[var(--shadow-soft)] ring-1 ring-amber-200/80">
       <div className="flex items-center gap-3 text-amber-900">
         <ClipboardCheck className="h-5 w-5" />
         <span className="font-medium">{t('dashboard.review_pending', { count })}</span>

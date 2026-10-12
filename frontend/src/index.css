@@ -2,6 +2,16 @@
 
 @theme {
   --font-sans: "Inter", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Tamil", "Noto Sans Kannada", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Tamil", "Noto Sans Kannada", ui-sans-serif, system-ui, sans-serif;
+  --color-ink-950: #06110f;
+  --color-ink-900: #0b1f1c;
+  --color-ink-800: #12302b;
+  --color-ink-700: #1b433c;
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px -6px rgb(15 23 42 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.04), 0 18px 40px -16px rgb(15 23 42 / 0.22);
+  --shadow-glow: 0 8px 24px -8px rgb(22 134 114 / 0.55);
+  --animate-fade-up: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float: float 14s ease-in-out infinite;
   --color-brand-50: #effcf8;
   --color-brand-100: #d7f6ec;
   --color-brand-200: #b0ecd9;
@@ -21,9 +31,103 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
+  @apply text-slate-800 antialiased;
+  font-feature-settings: "cv11", "ss01";
+  background:
+    radial-gradient(1200px 600px at 100% -10%, rgb(34 167 139 / 0.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(56 189 248 / 0.08), transparent 60%),
+    radial-gradient(700px 400px at 60% 50%, rgb(139 92 246 / 0.035), transparent 70%),
+    #f6f8f9;
+  background-attachment: fixed;
+}
+
+@layer base {
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+}
+
+::selection {
+  background: rgb(34 167 139 / 0.22);
 }
 
 .scrollbar-thin {
   scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.45) transparent;
+}
+
+@layer components {
+  /* Frosted surface for cards and panels. */
+  .surface {
+    background: rgb(255 255 255 / 0.86);
+    backdrop-filter: saturate(1.4) blur(12px);
+    box-shadow: var(--shadow-soft), inset 0 0 0 1px rgb(15 23 42 / 0.06);
+  }
+
+  .text-gradient {
+    background: linear-gradient(100deg, var(--color-brand-700), var(--color-brand-500) 45%, #0ea5e9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Native select with a custom chevron, so dropdowns match the inputs on every OS. */
+  .hc-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+
+  /* Fine dot grid used on hero banners. */
+  .bg-dots {
+    background-image: radial-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(30px, -20px, 0) scale(1.05); }
+  66% { transform: translate3d(-20px, 15px, 0) scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Animated logo: the heart beats twice per cycle while an ECG trace sweeps across it. */
+@keyframes hc-beat {
+  0%, 40%, 100% { transform: scale(1); }
+  10% { transform: scale(1.12); }
+  20% { transform: scale(0.97); }
+  30% { transform: scale(1.07); }
+}
+@keyframes hc-trace {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  8% { opacity: 1; }
+  60% { stroke-dashoffset: 0; opacity: 1; }
+  85%, 100% { stroke-dashoffset: -100; opacity: 0; }
+}
+@keyframes hc-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(34 167 139 / 0.45); }
+  50% { box-shadow: 0 0 0 7px rgb(34 167 139 / 0); }
+}
+.hc-logo { animation: hc-glow 2.4s ease-out infinite; }
+.hc-logo-heart { transform-box: fill-box; transform-origin: center; animation: hc-beat 1.6s ease-in-out infinite; }
+.hc-logo-trace { stroke-dasharray: 100; animation: hc-trace 2.4s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-logo, .hc-logo-heart, .hc-logo-trace { animation: none; }
+  .hc-logo-trace { stroke-dashoffset: 0; opacity: 1; }
 }

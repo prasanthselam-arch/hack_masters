@@ -43,8 +43,9 @@ class Patient(SQLModel, table=True):
     name: str
     gender: str | None = None  # male | female | other | unknown (FHIR AdministrativeGender)
     birth_date: date | None = None
-    phone: str | None = None
+    phone: str | None = None  # E.164
     preferred_language: str = "en"
+    relationship: str | None = None  # to the account holder: self | spouse | father | mother | son | daughter | ...
     abha_number: str | None = Field(default=None, index=True)  # 14 digits, XX-XXXX-XXXX-XXXX
     abha_address: str | None = None  # name@abdm
     abha_linked_at: datetime | None = None

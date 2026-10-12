@@ -76,8 +76,7 @@ function MedCard({ m }: { m: Medication }) {
       </div>
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
         <span>
-          {m.prescriber && `${t('meds.prescribed_by')} ${m.prescriber}`}
-          {m.authored_on && ` · ${fmtDate(m.authored_on, lang)}`}
+          {[m.prescriber && `${t('meds.prescribed_by')} ${m.prescriber}`, m.authored_on && fmtDate(m.authored_on, lang)].filter(Boolean).join(' · ')}
         </span>
         {m.document_id && (
           <Link to={`/documents/${m.document_id}`} className="text-brand-700 hover:underline">

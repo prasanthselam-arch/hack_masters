@@ -15,12 +15,15 @@ from app.services.safety import EMERGENCY_NOTICE, LANGUAGES, check_text, is_emer
 
 
 class ChatAnswer(BaseModel):
-    answer: str = Field(description="Answer in the requested language as short Markdown (max ~150 words of prose)")
+    reply_language: str = Field(default="", description="ISO 639-1 code of the language you replied in (en, hi, te, ta, kn, ml, mr, bn, ...)")
+    understood_question: str = Field(default="", description="The user's question restated in plain English, one short sentence")
+    answer: str = Field(description="Answer as short Markdown (max ~150 words of prose), in the language of the user's question")
     cited_record_ids: list[str] = Field(description="IDs of records used for the answer")
     answered_from_records: bool = Field(description="False if the records do not contain the answer")
     suggest_doctor: bool = Field(description="True if the question needs a clinician's judgement")
     follow_up_questions: list[str] = Field(
-        default_factory=list, description="2-3 short follow-up questions the user might ask next, in the requested language")
+        default_factory=list, description="2-3 short follow-up questions the user might ask next, in the reply language")
+    emergency_symptoms: bool = Field(default=False, description="True if the user describes emergency symptoms, in any language")
 
 
 CHAT_SYSTEM = """You are a careful personal health copilot. You answer questions about the user's OWN health records.
@@ -31,7 +34,18 @@ Rules:
 - If the records do not contain the answer, say so plainly. You may add brief, well-established general health information, clearly labelled as general information.
 - Never diagnose. Never tell the user to start, stop, skip or change a medicine or dose; for such questions explain what the record says and advise asking their doctor.
 - For worrying symptoms, advise contacting a doctor; for emergency symptoms, advise calling 112.
-- Be warm, calm and brief. Reply in {language}. Keep drug names, numbers and units unchanged.
+- Be warm, calm and brief. Keep drug names, numbers and units unchanged.
+Language:
+- Work out the language of the USER QUESTION and reply in that language, written in its own script. Users often type
+  Indian languages in English letters, mixed with English words: "na health ela vundhi ippudu" is Telugu (reply in
+  Telugu script, e.g. "మీ ఆరోగ్యం..."), "mera sugar kitna hai" is Hindi (Devanagari), "en BP evlo irukku" is Tamil,
+  "nanna sugar eshtu ide" is Kannada, "ente pressure engane und" is Malayalam. Medical words like sugar, BP, report or
+  tablet inside such a sentence do not make it English. This works for any language, not only Indian ones.
+- If the question is in English, reply in English. If it is too short to tell (e.g. "ok", "HbA1c?"), reply in the
+  language of the conversation so far, or else in {language}.
+- Write follow_up_questions in the same language and script as the answer; set reply_language to its ISO 639-1 code.
+- emergency_symptoms: true when the user describes chest pain, trouble breathing, fainting, stroke signs, heavy
+  bleeding, seizures or thoughts of self-harm, in any language or spelling.
 Formatting (Markdown):
 - Below your answer the app shows every cited result (value, range, flag, trend) and medicine (dose schedule) as cards,
   so do not list every value again. Say what stands out and what to do next, in 1-3 short paragraphs or a few bullets.
@@ -81,6 +95,7 @@ def ask(db: Session, patient: Patient, message: str, history: list[dict[str, str
     r: ChatAnswer = llm.parse("fast", system, prompt, ChatAnswer).parsed
     safety = check_text(r.answer)
     answer = r.answer if safety.passed else redact(r.answer)
+    reply_lang = reply_language(answer, r.reply_language)
     idx = _label_index(db, patient)
     citations = []
     for rid in dict.fromkeys([*r.cited_record_ids, *_mentioned(db, patient, answer, set(r.cited_record_ids))]):
@@ -95,11 +110,52 @@ def ask(db: Session, patient: Patient, message: str, history: list[dict[str, str
         "medications": _latest(_cited(db, MedicationRequest, [i for i in cited if idx[i]["kind"] == "medication"]),
                                lambda m: ((m["generic"] or m["name"]).lower(), (m["strength"] or "").replace(" ", "").lower()), "authored_on"),
         "follow_ups": [q.strip() for q in r.follow_up_questions if q.strip()][:3],
+        "reply_language": reply_lang,
+        "understood_question": r.understood_question.strip() or None,
         "answered_from_records": r.answered_from_records,
         "suggest_doctor": r.suggest_doctor,
-        "emergency_notice": EMERGENCY_NOTICE.get(lang, EMERGENCY_NOTICE["en"]) if is_emergency(message) else None,
+        "emergency_notice": EMERGENCY_NOTICE.get(reply_lang, EMERGENCY_NOTICE.get(lang, EMERGENCY_NOTICE["en"]))
+        if r.emergency_symptoms or is_emergency(message) else None,
         "safety": {"passed": safety.passed, "violations": safety.violations},
     }
+
+
+# Script of each Unicode block -> the language it most likely is when the model's own label is missing or wrong.
+_SCRIPTS = [((0x0900, 0x097F), "deva", "hi"), ((0x0980, 0x09FF), "beng", "bn"), ((0x0A00, 0x0A7F), "guru", "pa"),
+            ((0x0A80, 0x0AFF), "gujr", "gu"), ((0x0B00, 0x0B7F), "orya", "or"), ((0x0B80, 0x0BFF), "taml", "ta"),
+            ((0x0C00, 0x0C7F), "telu", "te"), ((0x0C80, 0x0CFF), "knda", "kn"), ((0x0D00, 0x0D7F), "mlym", "ml"),
+            ((0x0600, 0x06FF), "arab", "ur"), ((0x0D80, 0x0DFF), "sinh", "si")]
+_LANG_SCRIPT = {"hi": "deva", "mr": "deva", "ne": "deva", "sa": "deva", "bn": "beng", "as": "beng", "pa": "guru",
+                "gu": "gujr", "or": "orya", "ta": "taml", "te": "telu", "kn": "knda", "ml": "mlym", "ur": "arab",
+                "ar": "arab", "fa": "arab", "si": "sinh"}
+_NAMES = {"english": "en", "hindi": "hi", "telugu": "te", "tamil": "ta", "kannada": "kn", "malayalam": "ml",
+          "marathi": "mr", "bengali": "bn", "bangla": "bn", "gujarati": "gu", "punjabi": "pa", "odia": "or", "oriya": "or",
+          "urdu": "ur", "arabic": "ar", "nepali": "ne"}
+
+
+def _script(text: str) -> str | None:
+    counts: dict[str, int] = {}
+    for ch in text:
+        cp = ord(ch)
+        for (lo, hi), script, _ in _SCRIPTS:
+            if lo <= cp <= hi:
+                counts[script] = counts.get(script, 0) + 1
+    letters = sum(ch.isalpha() for ch in text) or 1
+    best = max(counts, key=lambda k: counts[k], default=None)
+    return best if best and counts[best] / letters > 0.3 else None
+
+
+def reply_language(answer: str, claimed: str) -> str:
+    """ISO code of the language the answer is written in: the model's label when it fits the script, otherwise the
+    script's usual language, so the UI badge and the text-to-speech voice match the text."""
+    c = claimed.strip().lower().replace("_", "-")
+    c = _NAMES.get(c, c.split("-")[0])
+    if not re.fullmatch(r"[a-z]{2,3}", c):
+        c = ""
+    script = _script(answer)
+    if script:
+        return c if _LANG_SCRIPT.get(c) == script else next(code for _, s, code in _SCRIPTS if s == script)
+    return "en" if not c or c in _LANG_SCRIPT else c
 
 
 def _mentioned(db: Session, patient: Patient, answer: str, cited: set[str]) -> list[str]:

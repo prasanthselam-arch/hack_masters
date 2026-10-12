@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
+
 from pydantic import BaseModel
 from sqlmodel import Session
 
@@ -21,9 +23,14 @@ def patient_summary(lang: str = "en", p: Patient = Depends(patient_or_404), db: 
         raise llm_error(e) from e
 
 
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class ChatIn(BaseModel):
     message: str
-    history: list[dict[str, str]] = []
+    history: list[ChatTurn] = []
     lang: str = "en"
 
 
@@ -32,7 +39,7 @@ def ask(body: ChatIn, p: Patient = Depends(patient_or_404), db: Session = Depend
     if not body.message.strip():
         raise HTTPException(400, "Empty message")
     try:
-        return chat.ask(db, p, body.message.strip()[:2000], body.history, body.lang if body.lang in LANGUAGES else "en")
+        return chat.ask(db, p, body.message.strip()[:2000], [h.model_dump() for h in body.history], body.lang if body.lang in LANGUAGES else "en")
     except Exception as e:  # noqa: BLE001
         raise llm_error(e) from e
 

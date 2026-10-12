@@ -10,9 +10,10 @@ const LOCALE: Record<Lang, string> = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta
 
 export function fmtDate(iso: string | null | undefined, lang: Lang = 'en', opts?: Intl.DateTimeFormatOptions) {
   if (!iso) return ''
-  const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso)
+  // The API stores times in UTC but returns them without a zone.
+  const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : /T[\d:.]+$/.test(iso) ? iso + 'Z' : iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(LOCALE[lang], opts ?? { day: 'numeric', month: 'short', year: 'numeric' })
+  return d.toLocaleString(LOCALE[lang], opts ?? { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function fmtNum(v: number | string | null | undefined) {
@@ -45,4 +46,13 @@ export function confidenceTone(c: number) {
   if (c >= 0.9) return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
   if (c >= 0.75) return 'bg-amber-50 text-amber-800 ring-amber-200'
   return 'bg-red-50 text-red-700 ring-red-200'
+}
+
+export function ageOf(birth: string | null): number | null {
+  if (!birth) return null
+  const b = new Date(birth + 'T00:00:00')
+  const now = new Date()
+  let age = now.getFullYear() - b.getFullYear()
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) age--
+  return age >= 0 ? age : null
 }

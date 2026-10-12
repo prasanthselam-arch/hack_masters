@@ -5,6 +5,12 @@ export interface Account {
   created_at: string
 }
 
+export const RELATIONSHIPS = [
+  'self', 'spouse', 'father', 'mother', 'son', 'daughter', 'brother', 'sister',
+  'grandfather', 'grandmother', 'grandson', 'granddaughter', 'father_in_law', 'mother_in_law', 'other',
+] as const
+export type Relationship = (typeof RELATIONSHIPS)[number]
+
 export type Lang = 'en' | 'hi' | 'te' | 'ta' | 'kn'
 export type Flag = 'N' | 'L' | 'H' | 'LL' | 'HH' | 'A' | null
 
@@ -15,6 +21,7 @@ export interface Patient {
   birth_date: string | null
   phone: string | null
   preferred_language: Lang
+  relationship: Relationship | null
   abha_number: string | null
   abha_address: string | null
   abha_linked_at: string | null
@@ -125,7 +132,7 @@ export interface ReviewPayload {
 
 export interface PipelineLogEntry {
   stage: string
-  ms: number
+  ms?: number
   model?: string
   tokens?: number
   [k: string]: unknown
@@ -318,6 +325,9 @@ export interface ChatReply {
   results: (Observation & { trend: { date: string; value: number; flag: Flag }[] })[]
   medications: Medication[]
   follow_ups: string[]
+  /** ISO code of the language the answer is written in (it follows the user's message, not the app language). */
+  reply_language?: string
+  understood_question?: string | null
   answered_from_records: boolean
   suggest_doctor: boolean
   emergency_notice: string | null

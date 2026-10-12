@@ -5,7 +5,7 @@ MedicationRequest, Condition, DiagnosticReportLab, Encounter, DocumentReference,
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from app.models.tables import (
@@ -29,6 +29,7 @@ DOCTOR_SYSTEM = "https://doctor.ndhm.gov.in"
 FACILITY_SYSTEM = "https://facility.ndhm.gov.in"
 INTERP = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
 TZ = "+05:30"
+IST = timezone(timedelta(hours=5, minutes=30))
 
 UCUM_CODES = {
     "g/dL": "g/dL", "%": "%", "fL": "fL", "pg": "pg", "10^3/uL": "10*3/uL", "10^6/uL": "10*6/uL",
@@ -65,7 +66,7 @@ def instant(d: date | datetime | None) -> str | None:
     if d is None:
         return None
     if isinstance(d, datetime):
-        return d.replace(microsecond=0).isoformat() if d.tzinfo else d.replace(microsecond=0).isoformat() + TZ
+        return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).astimezone(IST).replace(microsecond=0).isoformat()  # stored times are UTC
     return f"{d.isoformat()}T00:00:00{TZ}"
 
 

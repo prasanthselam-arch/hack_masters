@@ -3,7 +3,6 @@
 import base64
 import hashlib
 import hmac
-import re
 import secrets
 import threading
 import time
@@ -13,9 +12,9 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.models.tables import Account, AuthSession
+from app.services import contact
 
 COOKIE = "hc_session"
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _SCRYPT = {"n": 2**14, "r": 8, "p": 1}
 MAX_FAILURES, FAILURE_WINDOW_S = 5, 15 * 60
 
@@ -25,17 +24,18 @@ class AuthError(ValueError):
 
 
 def normalize_login(raw: str) -> str:
-    """Email (lower-cased) or Indian mobile number (10 digits, +91 / 0 prefix and spaces removed)."""
-    s = raw.strip()
-    if "@" in s:
-        if not _EMAIL.match(s):
-            raise AuthError("Enter a valid email address")
-        return s.lower()
-    digits = re.sub(r"[\s\-()]", "", s)
-    digits = re.sub(r"^(\+?91|0)(?=\d{10}$)", "", digits)
-    if not re.fullmatch(r"[6-9]\d{9}", digits):
-        raise AuthError("Enter a valid email address or 10-digit mobile number")
-    return digits
+    """Email (lower-cased) or mobile number in E.164 form (numbers without a country code are Indian)."""
+    try:
+        return contact.normalize_login(raw)
+    except contact.ContactError as e:
+        raise AuthError(str(e)) from e
+
+
+def check_password_strength(password: str) -> None:
+    if len(password) < 8:
+        raise AuthError("Password must be at least 8 characters")
+    if len(password) > 200:
+        raise AuthError("Password is too long")
 
 
 def hash_password(password: str) -> str:
@@ -84,8 +84,7 @@ def register(db: Session, name: str, login: str, password: str) -> Account:
     login = normalize_login(login)
     if not name.strip():
         raise AuthError("Please enter your name")
-    if len(password) < 8:
-        raise AuthError("Password must be at least 8 characters")
+    check_password_strength(password)
     if db.exec(select(Account).where(Account.login == login)).first():
         raise AuthError("An account with this email or mobile number already exists. Please sign in")
     acc = Account(login=login, name=name.strip(), password_hash=hash_password(password))
@@ -135,7 +134,38 @@ def end_session(db: Session, token: str | None) -> None:
         db.commit()
 
 
-def end_all_sessions(db: Session, account_id: str) -> None:
+def end_all_sessions(db: Session, account_id: str, keep_token: str | None = None) -> None:
+    keep = _hash_token(keep_token) if keep_token else None
     for s in db.exec(select(AuthSession).where(AuthSession.account_id == account_id)).all():
-        db.delete(s)
+        if s.token_hash != keep:
+            db.delete(s)
     db.commit()
+
+
+def update_account(db: Session, acc: Account, name: str | None, login: str | None, current_password: str | None) -> Account:
+    if name is not None:
+        if not name.strip():
+            raise AuthError("Please enter your name")
+        acc.name = name.strip()[:100]
+    if login is not None:
+        new_login = normalize_login(login)
+        if new_login != acc.login:
+            if not current_password or not verify_password(current_password, acc.password_hash):
+                raise AuthError("Enter your current password to change your email or mobile number")
+            if db.exec(select(Account).where(Account.login == new_login)).first():
+                raise AuthError("Another account already uses this email or mobile number")
+            acc.login = new_login
+    db.add(acc)
+    db.commit()
+    db.refresh(acc)
+    return acc
+
+
+def change_password(db: Session, acc: Account, current_password: str, new_password: str, keep_token: str | None) -> None:
+    if not verify_password(current_password, acc.password_hash):
+        raise AuthError("Your current password is incorrect")
+    check_password_strength(new_password)
+    acc.password_hash = hash_password(new_password)
+    db.add(acc)
+    db.commit()
+    end_all_sessions(db, acc.id, keep_token=keep_token)

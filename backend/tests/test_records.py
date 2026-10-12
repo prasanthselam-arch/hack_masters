@@ -43,3 +43,36 @@ def test_only_latest_prescription_of_a_drug_stays_active(db, newer_first):
     for when, meds in reversed(batches) if newer_first else batches:
         _confirm(db, p, when, meds)
     assert _active(db, p) == [("Atorvastatin", old), ("Metformin", new)]
+
+
+def test_a_finished_course_stops_being_active_without_reconfirming():
+    rx = MedicationRequest(patient_id="p", name="Azee", name_raw="Azee", duration_days=5, authored_on=date(2026, 3, 1), status="active")
+    assert records.medication_status(rx, today=date(2026, 3, 5)) == "active"
+    assert records.medication_status(rx, today=date(2026, 3, 7)) == "completed"
+    rx.duration_days = None
+    assert records.medication_status(rx, today=date(2027, 1, 1)) == "active"
+
+
+def test_deleting_a_profile_removes_its_abha_otp_sessions(db):
+    from app.models.tables import AbhaSession
+
+    patient = Patient(name="Ravi")
+    db.add(patient)
+    db.commit()
+    db.add(AbhaSession(patient_id=patient.id, otp="123456"))
+    db.commit()
+    records.delete_patient(db, patient)
+    assert db.exec(select(AbhaSession)).all() == []
+
+
+def test_bound_only_results_are_not_flagged_after_review_edits():
+    from app.pipeline.validate import refresh_review
+    from app.schemas.review import ReviewObservation
+
+    payload = ReviewPayload(document=ReviewDocument(doc_type="lab_report"), observations=[
+        ReviewObservation(name_raw="CRP", name="CRP", value_num=0.5, value_text="<0.5", unit="mg/dL", ref_high=0.3),
+        ReviewObservation(name_raw="CRP", name="CRP", value_num=0.5, unit="mg/dL", ref_high=0.3),
+    ])
+    bound, plain = refresh_review(payload, "male").observations
+    assert bound.interpretation is None
+    assert plain.interpretation == "H"

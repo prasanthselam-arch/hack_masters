@@ -60,10 +60,9 @@ export function SummaryView({ s }: { s: Summary }) {
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {fmtNum(a.value)} <span className="text-sm font-normal text-slate-500">{a.unit}</span>
                 </p>
-                {a.reference && (
+                {(a.reference || a.date) && (
                   <p className="text-xs text-slate-500">
-                    {t('review.range')}: {a.reference}
-                    {a.date && ` · ${fmtDate(a.date, s.language)}`}
+                    {[a.reference && `${t('review.range')}: ${a.reference}`, a.date && fmtDate(a.date, s.language)].filter(Boolean).join(' · ')}
                   </p>
                 )}
                 {a.what_it_measures && <p className="mt-2 text-sm text-slate-600">{a.what_it_measures}</p>}

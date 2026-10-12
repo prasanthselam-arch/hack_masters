@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, ClipboardList, FileText, FlaskConical, Hospital, Pill, Plus, RefreshCw, ShieldCheck, Stethoscope, Trash2 } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfidenceBadge, FlagBadge, IssueList, MedSchedule, PipelineSteps, StageLabel, VerifiedBadge } from '@/components/medical'
@@ -23,6 +23,27 @@ const num = (s: string): number | null => {
   return s.trim() === '' || Number.isNaN(v) ? null : v
 }
 const small = 'h-8 px-2 py-1'
+
+/** Keeps the typed text so partial numbers such as "0." survive until they are complete. */
+function DecimalInput({ value, onValue, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & { value: number | null; onValue: (v: number | null) => void }) {
+  const [text, setText] = useState(value === null ? '' : String(value))
+  const [seen, setSeen] = useState(value)
+  if (value !== seen) {
+    setSeen(value)
+    if (num(text) !== value) setText(value === null ? '' : String(value))
+  }
+  return (
+    <Input
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value)
+        onValue(num(e.target.value))
+      }}
+      {...props}
+    />
+  )
+}
 
 export default function Review() {
   const { id = '' } = useParams()
@@ -61,9 +82,13 @@ export default function Review() {
           (k) => qc.invalidateQueries({ queryKey: k }),
         ),
       )
-      qc.removeQueries({ queryKey: ['patientSummary', patient.id] })
+      for (const k of [['patientSummary', patient.id], ['docSummary', id], ['docFhir', id]]) qc.removeQueries({ queryKey: k })
       nav(`/documents/${id}`)
     },
+  })
+  const retry = useMutation({
+    mutationFn: () => api.reprocess(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['document', id] }),
   })
 
   const update = <K extends ListKey>(key: K, itemId: string, changes: Partial<ItemOf<K>>, markDirty = true) => {
@@ -106,6 +131,13 @@ export default function Review() {
           <StageLabel stage={d.stage} status={d.status} />
         </div>
         {d.error && <p className="mt-3 text-sm text-red-600">{d.error}</p>}
+        {d.status === 'failed' && d.source === 'upload' && (
+          <Button className="mt-4" variant="secondary" loading={retry.isPending} onClick={() => retry.mutate()}>
+            <RefreshCw className="h-4 w-4" />
+            {t('upload.retry_btn')}
+          </Button>
+        )}
+        {retry.error && <div className="mt-3"><ErrorNote error={retry.error} /></div>}
       </Card>
     )
   }
@@ -297,7 +329,7 @@ export default function Review() {
                   </label>
                   <label>
                     <span className="text-xs text-slate-500">{t('review.duration')}</span>
-                    <Input className={small} value={m.duration_text ?? ''} placeholder="5 days" onChange={(e) => update('medications', m.id, { duration_text: e.target.value || null, duration_days: null })} />
+                    <Input className={small} value={m.duration_text ?? ''} placeholder={t('review.duration_hint')} onChange={(e) => update('medications', m.id, { duration_text: e.target.value || null, duration_days: null })} />
                   </label>
                   <label>
                     <span className="text-xs text-slate-500">{t('review.dose')}</span>
@@ -338,7 +370,7 @@ export default function Review() {
                     <Input
                       className={cn(small, 'font-semibold')}
                       placeholder={t('review.value')}
-                      value={o.value_num !== null ? String(o.value_num) : (o.value_text ?? '')}
+                      value={o.value_text ?? (o.value_num !== null ? String(o.value_num) : '')}
                       onChange={(e) => {
                         const v = e.target.value
                         const n = /^\s*[-+]?\d*[.,]?\d+\s*$/.test(v) ? num(v) : null
@@ -353,9 +385,9 @@ export default function Review() {
                   </div>
                   <div>
                     <div className="flex items-center gap-1">
-                      <Input className={small} inputMode="decimal" placeholder="low" value={o.ref_low ?? ''} onChange={(e) => update('observations', o.id, { ref_low: num(e.target.value), ref_source: 'report' })} />
+                      <DecimalInput className={small} placeholder={t('review.range_low')} aria-label={t('review.range_low')} value={o.ref_low} onValue={(v) => update('observations', o.id, { ref_low: v, ref_source: 'report' })} />
                       <span className="text-slate-400">–</span>
-                      <Input className={small} inputMode="decimal" placeholder="high" value={o.ref_high ?? ''} onChange={(e) => update('observations', o.id, { ref_high: num(e.target.value), ref_source: 'report' })} />
+                      <DecimalInput className={small} placeholder={t('review.range_high')} aria-label={t('review.range_high')} value={o.ref_high} onValue={(v) => update('observations', o.id, { ref_high: v, ref_source: 'report' })} />
                     </div>
                     <p className="mt-1 truncate text-xs text-slate-500">{o.ref_source === 'curated' ? t('review.range_curated') : o.ref_text || (o.ref_source ? t('review.range_report') : '')}</p>
                   </div>

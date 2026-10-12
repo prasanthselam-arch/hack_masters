@@ -44,12 +44,19 @@ export default function Abha() {
       refreshPatient()
     },
   })
-  const unlink = useMutation({ mutationFn: () => api.abhaUnlink(patient.id), onSuccess: refreshPatient })
   const imp = useMutation({
     mutationFn: () => api.abhaImport(patient.id, types),
     onSuccess: () => {
       refreshRecords()
-      qc.removeQueries({ queryKey: ['patientSummary', patient.id] })
+      // re-import replaces the documents in place, so their cached summaries and bundles are stale
+      for (const k of [['patientSummary', patient.id], ['docSummary'], ['docFhir'], ['document']]) qc.removeQueries({ queryKey: k })
+    },
+  })
+  const unlink = useMutation({
+    mutationFn: () => api.abhaUnlink(patient.id),
+    onSuccess: () => {
+      imp.reset()
+      refreshPatient()
     },
   })
 
@@ -85,7 +92,7 @@ export default function Abha() {
                   <p className="mt-4 text-sm font-medium">{patient.name}</p>
                   {patient.abha_linked_at && <p className="text-xs text-brand-200">{fmtDate(patient.abha_linked_at, lang)}</p>}
                 </div>
-                <Button variant="danger" size="sm" loading={unlink.isPending} onClick={() => unlink.mutate()}>
+                <Button variant="danger" size="sm" loading={unlink.isPending} onClick={() => window.confirm(t('abha.unlink_confirm')) && unlink.mutate()}>
                   <Link2Off className="h-4 w-4" />
                   {t('abha.unlink')}
                 </Button>

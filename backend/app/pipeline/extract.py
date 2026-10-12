@@ -2,9 +2,9 @@
 
 import json
 
-from app.pipeline import llm
+from app.pipeline import llm, preprocess
 from app.pipeline.preprocess import PreparedDocument
-from app.pipeline.prompts import CLASSIFY_SYSTEM, EXTRACT_RULES_REMINDER, EXTRACT_SYSTEM, VERIFY_SYSTEM
+from app.pipeline.prompts import CLASSIFY_SYSTEM, DETAIL_NOTE, EXTRACT_RULES_REMINDER, EXTRACT_SYSTEM, VERIFY_SYSTEM
 from app.schemas.extraction import Classification, DocumentExtraction, VerificationResult
 
 TYPE_HINTS = {
@@ -16,11 +16,15 @@ TYPE_HINTS = {
 }
 
 
-def _page_parts(doc: PreparedDocument, with_text_layer: bool = True) -> list[llm.Part]:
+def _page_parts(doc: PreparedDocument, with_text_layer: bool = True, zoom: bool = False) -> list[llm.Part]:
     parts: list[llm.Part] = []
     for i, p in enumerate(doc.pages, start=1):
         parts.append(llm.text(f"--- Page {i} image ---"))
         parts.append(llm.image(p))
+        crops = doc.details.get(i - 1, []) if zoom else []
+        for j, c in enumerate(crops, start=1):
+            parts.append(llm.text(f"--- Page {i} DETAIL {j} of {len(crops)} (zoomed {'upper' if j == 1 else 'lower'} part of the same page) ---"))
+            parts.append(llm.image(c))
     if with_text_layer and doc.has_text_layer:
         layer = "\n".join(f"--- Page {i} text layer ---\n{t.strip()}" for i, t in enumerate(doc.text_layer, start=1))
         parts.append(llm.text("MACHINE TEXT LAYER (exact characters from the digital PDF):\n" + layer[:30000]))
@@ -37,16 +41,27 @@ def classify(doc: PreparedDocument) -> llm.LLMResult:
 def extract(doc: PreparedDocument, cls: Classification) -> llm.LLMResult:
     hint = TYPE_HINTS.get(cls.document_type.value, TYPE_HINTS["other"])
     lang = ", ".join(cls.languages) or "unknown"
-    meta = f"{hint}\nDetected languages: {lang}. Handwritten: {cls.handwritten}. Pages: {len(doc.pages)}."
-    parts = [llm.text(meta)] + _page_parts(doc) + [llm.text(EXTRACT_RULES_REMINDER)]
+    meta = f"{hint}\nDetected languages: {lang}. Handwritten: {cls.handwritten}. Legibility: {cls.legibility.value}. Pages: {len(doc.pages)}."
+    if _zoom(doc, cls):
+        meta += "\n" + DETAIL_NOTE
+    parts = [llm.text(meta)] + _page_parts(doc, zoom=_zoom(doc, cls)) + [llm.text(EXTRACT_RULES_REMINDER)]
     return llm.parse("extract", EXTRACT_SYSTEM, parts, DocumentExtraction)
 
 
-def verify(doc: PreparedDocument, first: DocumentExtraction, suspicious: list[str]) -> llm.LLMResult:
+def _zoom(doc: PreparedDocument, cls: Classification) -> bool:
+    return any(doc.details.values()) and (cls.handwritten or cls.legibility.value != "good")
+
+
+def orient(doc: PreparedDocument, cls: Classification) -> str | None:
+    return preprocess.orient(doc, cls.rotation) if cls.rotation else None
+
+
+def verify(doc: PreparedDocument, first: DocumentExtraction, suspicious: list[str], cls: Classification | None = None) -> llm.LLMResult:
     hints = ""
     if suspicious:
         hints = "Deterministic validators flagged these fields as suspicious; re-read them with extra care:\n- " + "\n- ".join(suspicious[:40])
-    parts = _page_parts(doc) + [
+    zoom = bool(cls and _zoom(doc, cls))
+    parts = ([llm.text(DETAIL_NOTE)] if zoom else []) + _page_parts(doc, zoom=zoom) + [
         llm.text("EXTRACTION TO AUDIT:\n" + json.dumps(first.model_dump(mode="json"), ensure_ascii=False)),
     ]
     if hints:

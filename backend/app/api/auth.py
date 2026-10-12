@@ -29,6 +29,17 @@ class DeleteIn(BaseModel):
     password: str
 
 
+class AccountPatch(BaseModel):
+    name: str | None = None
+    login: str | None = None
+    current_password: str | None = None
+
+
+class PasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
 def _account_out(a: Account) -> dict[str, Any]:
     return {"id": a.id, "name": a.name, "login": a.login, "created_at": a.created_at}
 
@@ -69,6 +80,25 @@ def logout(request: Request, resp: Response, db: Session = Depends(get_session))
 @router.get("/me")
 def me(acc: Account = Depends(current_account)):
     return _account_out(acc)
+
+
+@router.patch("/me")
+def update_me(body: AccountPatch, acc: Account = Depends(current_account), db: Session = Depends(get_session)):
+    try:
+        acc = auth.update_account(db, acc, body.name, body.login, body.current_password)
+    except auth.AuthError as e:
+        raise HTTPException(400, str(e)) from e
+    return _account_out(acc)
+
+
+@router.post("/password")
+def change_password(body: PasswordIn, request: Request, acc: Account = Depends(current_account), db: Session = Depends(get_session)):
+    """Change the password and sign out every other device."""
+    try:
+        auth.change_password(db, acc, body.current_password, body.new_password, request.cookies.get(auth.COOKIE))
+    except auth.AuthError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"changed": True}
 
 
 @router.post("/delete-account")

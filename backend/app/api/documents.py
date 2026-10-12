@@ -14,6 +14,7 @@ from app.pipeline import runner
 from app.pipeline.validate import refresh_review
 from app.schemas.review import ReviewPayload
 from app.services import records, summary
+from app.services.safety import LANGUAGES
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
@@ -33,13 +34,16 @@ def _doc_out(d: Document, full: bool = False) -> dict[str, Any]:
 
 @router.post("/patients/{patient_id}/documents")
 async def upload(files: list[UploadFile] = File(...), p: Patient = Depends(patient_or_404), db: Session = Depends(get_session)):
-    created = []
+    mimes = []
     for f in files:
         mime = f.content_type or mimetypes.guess_type(f.filename or "")[0] or ""
         if mime == "image/jpg":
             mime = "image/jpeg"
         if mime not in ALLOWED:
             raise HTTPException(415, f"{f.filename}: unsupported file type {mime or 'unknown'} (use PDF, JPG, PNG or WEBP)")
+        mimes.append(mime)
+    created = []
+    for f, mime in zip(files, mimes):
         doc = Document(patient_id=p.id, filename=f.filename or "upload", mime_type=mime, file_path="")
         folder = runner.doc_dir(doc.id)
         folder.mkdir(parents=True, exist_ok=True)
@@ -107,8 +111,11 @@ def confirm(payload: ReviewPayload, d: Document = Depends(document_or_404), db: 
 def reprocess(d: Document = Depends(document_or_404), db: Session = Depends(get_session)):
     if d.source != "upload":
         raise HTTPException(400, "Only uploaded documents can be reprocessed")
+    if d.status in ("queued", "processing"):
+        raise HTTPException(409, "This document is already being processed")
     records.clear_document_records(db, d.id)
-    d.status, d.stage, d.progress, d.review = "queued", "queued", 0, None
+    d.status, d.stage, d.progress, d.review, d.error = "queued", "queued", 0, None, None
+    d.classification = d.raw_extraction = d.verified_extraction = None
     db.add(d)
     db.commit()
     runner.submit(d.id)
@@ -135,6 +142,8 @@ def fhir(d: Document = Depends(document_or_404), db: Session = Depends(get_sessi
 def doc_summary(lang: str = "en", d: Document = Depends(document_or_404), db: Session = Depends(get_session)):
     if d.status != "confirmed":
         raise HTTPException(409, "Confirm the document first")
+    if lang not in LANGUAGES:
+        raise HTTPException(400, f"Unsupported language {lang}")
     try:
         return summary.document_summary(db, d, lang)
     except Exception as e:  # noqa: BLE001

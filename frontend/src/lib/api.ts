@@ -32,13 +32,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let msg = res.statusText
     try {
       const body = await res.json()
-      msg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? body)
+      msg = errorText(body.detail ?? body)
     } catch {
       /* non-JSON error body */
     }
     throw new ApiError(res.status, msg)
   }
   return res.json() as Promise<T>
+}
+
+/** FastAPI validation errors arrive as a list of {loc, msg}; show just the messages. */
+function errorText(detail: unknown): string {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail))
+    return detail
+      .map((d) => String((d as { msg?: string }).msg ?? d).replace(/^Value error, /, ''))
+      .join('. ')
+  return JSON.stringify(detail)
 }
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -53,6 +63,10 @@ export const api = {
   register: (body: { name: string; login: string; password: string }) => request<Account>('/api/auth/register', json('POST', body)),
   login: (body: { login: string; password: string }) => request<Account>('/api/auth/login', json('POST', body)),
   logout: () => request<{ signed_out: boolean }>('/api/auth/logout', json('POST')),
+  updateMe: (body: { name?: string; login?: string; current_password?: string }) => request<Account>('/api/auth/me', json('PATCH', body)),
+  changePassword: (body: { current_password: string; new_password: string }) =>
+    request<{ changed: boolean }>('/api/auth/password', json('POST', body)),
+  deleteAccount: (password: string) => request<{ deleted: boolean }>('/api/auth/delete-account', json('POST', { password })),
   patients: () => request<Patient[]>('/api/patients'),
   createPatient: (body: Partial<Patient>) => request<Patient>('/api/patients', json('POST', body)),
   updatePatient: (id: string, body: Partial<Patient>) => request<Patient>(`/api/patients/${id}`, json('PATCH', body)),

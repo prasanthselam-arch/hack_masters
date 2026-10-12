@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, Download, ExternalLink, FileJson, Pencil, RotateCcw, Trash2, XCircle } from 'lucide-react'
+import { ArrowLeft, ExternalLink, FileJson, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FhirBundleView } from '@/components/FhirBundleView'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { FlagBadge, MedSchedule } from '@/components/medical'
 import { PageViewer } from '@/components/PageViewer'
@@ -47,6 +48,7 @@ export default function DocumentView() {
     mutationFn: () => api.reprocess(id),
     onSuccess: async () => {
       await invalidate()
+      for (const k of [['document', id], ['docSummary', id], ['docFhir', id]]) qc.removeQueries({ queryKey: k })
       nav('/upload')
     },
   })
@@ -134,65 +136,18 @@ export default function DocumentView() {
 
       {tab === 'structured' && <Structured d={d} />}
 
-      {tab === 'fhir' && (
-        <Card>
-          <CardHeader
-            icon={<FileJson className="h-5 w-5" />}
-            title="FHIR R4 · ABDM Document Bundle"
-            subtitle={
-              fhir.data &&
-              (fhir.data.validation_errors.length === 0 ? (
-                <span className="inline-flex items-center gap-1 text-emerald-700">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {t('docview.fhir_valid')} · {(fhir.data.bundle.entry as unknown[] | undefined)?.length ?? 0} resources
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-red-600">
-                  <XCircle className="h-4 w-4" />
-                  {t('docview.fhir_invalid')}
-                </span>
-              ))
-            }
-            action={
-              fhir.data && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    const blob = new Blob([JSON.stringify(fhir.data.bundle, null, 2)], { type: 'application/fhir+json' })
-                    const a = document.createElement('a')
-                    a.href = URL.createObjectURL(blob)
-                    a.download = `${(d.title || 'document').replace(/\s+/g, '-').toLowerCase()}.fhir.json`
-                    a.click()
-                    URL.revokeObjectURL(a.href)
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  {t('docview.download_fhir')}
-                </Button>
-              )
-            }
+      {tab === 'fhir' &&
+        (fhir.isLoading ? (
+          <Spinner />
+        ) : fhir.error ? (
+          <ErrorNote error={fhir.error} />
+        ) : fhir.data ? (
+          <FhirBundleView
+            bundle={fhir.data.bundle}
+            errors={fhir.data.validation_errors}
+            filename={`${(d.title || 'document').replace(/\s+/g, '-').toLowerCase()}.fhir.json`}
           />
-          {fhir.isLoading ? (
-            <Spinner />
-          ) : fhir.error ? (
-            <div className="p-5">
-              <ErrorNote error={fhir.error} />
-            </div>
-          ) : fhir.data ? (
-            <>
-              {fhir.data.validation_errors.length > 0 && (
-                <ul className="space-y-1 border-b border-slate-100 px-5 py-3 text-xs text-red-600">
-                  {fhir.data.validation_errors.map((e, i) => (
-                    <li key={i}>{e}</li>
-                  ))}
-                </ul>
-              )}
-              <pre className="scrollbar-thin max-h-[70vh] overflow-auto bg-slate-900 p-5 text-xs leading-relaxed text-slate-100">{JSON.stringify(fhir.data.bundle, null, 2)}</pre>
-            </>
-          ) : null}
-        </Card>
-      )}
+        ) : null)}
     </div>
   )
 }
@@ -225,7 +180,7 @@ function Structured({ d }: { d: DocumentInfo }) {
                       {o.panel && <p className="text-xs text-slate-500">{o.panel}</p>}
                     </td>
                     <td className="px-3 py-2.5 font-semibold text-slate-900">
-                      {fmtNum(o.value_num ?? o.value_text)} <span className="font-normal text-slate-500">{o.unit}</span>
+                      {o.value_text ?? fmtNum(o.value_num)} <span className="font-normal text-slate-500">{o.unit}</span>
                     </td>
                     <td className="px-3 py-2.5 text-slate-600">{rangeText(o.ref_low, o.ref_high) || o.ref_text || '—'}</td>
                     <td className="px-3 py-2.5">
@@ -276,12 +231,12 @@ function Structured({ d }: { d: DocumentInfo }) {
       )}
       {d.pipeline_log.length > 0 && (
         <Card className="lg:col-span-2">
-          <CardHeader title="AI pipeline" />
+          <CardHeader title={t('docview.pipeline')} />
           <ol className="grid gap-2 p-5 sm:grid-cols-3 lg:grid-cols-6">
             {d.pipeline_log.map((l, i) => (
               <li key={i} className="rounded-lg bg-slate-50 px-3 py-2">
                 <p className="text-xs font-medium text-slate-700">{t(`upload.stage.${l.stage}`, { defaultValue: l.stage })}</p>
-                <p className="text-xs text-slate-500">{(l.ms / 1000).toFixed(1)} s</p>
+                {l.ms != null && <p className="text-xs text-slate-500">{(l.ms / 1000).toFixed(1)} s</p>}
                 {l.model && <p className="truncate font-mono text-[10px] text-slate-400">{l.model}</p>}
               </li>
             ))}

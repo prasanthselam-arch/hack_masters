@@ -6,6 +6,7 @@ has a fallback chain of models; overload/quota errors move to the next model.
 
 import base64
 import logging
+import re
 import time
 from dataclasses import dataclass
 from functools import lru_cache
@@ -31,6 +32,10 @@ def image(path: str | Path) -> Part:
     return {"image": str(path)}
 
 
+def audio(data: bytes, mime: str) -> Part:
+    return {"audio": data, "mime": mime}
+
+
 @dataclass
 class LLMResult:
     parsed: Any
@@ -43,6 +48,18 @@ class LLMResult:
 class LLMUnavailable(RuntimeError):
     pass
 
+
+# Models that just reported an exhausted quota or do not exist are skipped for a while, so every request does not
+# wait through the same failures before reaching a working model.
+_cooling: dict[str, float] = {}
+
+
+def _cooldown_s(msg: str) -> float:
+    """How long to skip a model: the provider's suggested retry delay, longer for daily quotas and unknown models."""
+    if "PerDay" in msg or "404" in msg or "NOT_FOUND" in msg:
+        return 1800
+    m = re.search(r"retry(?:Delay|[ _]in)\W+(\d+(?:\.\d+)?)\s*s", msg, re.I)
+    return max(float(m.group(1)), 20) if m else 300
 
 _RETRYABLE = ("503", "UNAVAILABLE", "overloaded", "429", "RESOURCE_EXHAUSTED", "rate", "timeout", "500", "INTERNAL", "404", "NOT_FOUND")
 
@@ -77,6 +94,8 @@ def _call_gemini(model: str, system: str, parts: list[Part], schema: type[T]) ->
     for p in parts:
         if "image" in p:
             contents.append(types.Part.from_bytes(data=Path(p["image"]).read_bytes(), mime_type="image/png"))
+        elif "audio" in p:
+            contents.append(types.Part.from_bytes(data=p["audio"], mime_type=p["mime"]))
         else:
             contents.append(p["text"])
     thinking = None
@@ -106,6 +125,8 @@ def _call_gemini(model: str, system: str, parts: list[Part], schema: type[T]) ->
 def _call_openai(model: str, system: str, parts: list[Part], schema: type[T]) -> LLMResult:
     content: list[dict[str, Any]] = []
     for p in parts:
+        if "audio" in p:
+            raise LLMUnavailable("Audio input needs the Gemini provider")
         if "image" in p:
             data = base64.b64encode(Path(p["image"]).read_bytes()).decode()
             content.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{data}", "detail": "high"}})
@@ -138,11 +159,15 @@ def parse(role: str, system: str, parts: list[Part] | str, schema: type[T], atte
         parts = [text(parts)]
     call = _call_gemini if s.llm_provider == "gemini" else _call_openai
     errors: list[str] = []
-    for model in s.models_for(role):
+    chain = s.models_for(role)
+    now = time.monotonic()
+    ready = [m for m in chain if _cooling.get(m, 0) <= now] or chain
+    for model in ready:
         for attempt in range(attempts_per_model):
             try:
                 r = call(model, system, parts, schema)
                 log.info("llm %s %s %s %dms in=%d out=%d", role, model, schema.__name__, r.ms, r.input_tokens, r.output_tokens)
+                _cooling.pop(model, None)
                 return r
             except LLMUnavailable:
                 raise
@@ -156,6 +181,7 @@ def parse(role: str, system: str, parts: list[Part] | str, schema: type[T], atte
                         continue
                     break
                 if "404" in msg or "NOT_FOUND" in msg or "free_tier" in msg or "quota" in msg.lower():
+                    _cooling[model] = time.monotonic() + _cooldown_s(msg)
                     break
                 time.sleep(2 + 3 * attempt)
     raise LLMUnavailable("All models failed: " + " | ".join(errors[-4:]))

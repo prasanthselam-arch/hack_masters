@@ -14,7 +14,9 @@ from sqlmodel import Session, select
 
 from app.models.tables import Document, MedicationRequest, Observation, Patient, Summary
 from app.pipeline import llm
+from app.pipeline.validate import _range_text
 from app.services import facts as F
+from app.services.records import medication_status
 from app.services.safety import CRITICAL_BANNER, DISCLAIMER, LANGUAGES, check_text, numbers_in, numbers_preserved, redact
 
 log = logging.getLogger(__name__)
@@ -161,8 +163,9 @@ def _assemble(db: Session, text: SummaryText, lang: str, facts: dict[str, Any], 
         o = obs.get(a.record_id)
         if o is None or o.interpretation in (None, "N"):
             continue  # never show an "abnormal" explanation the data does not support
-        abnormal.append({**a.model_dump(), "value": o.value_num if o.value_num is not None else o.value_text, "unit": o.unit,
-                         "reference": o.ref_text, "flag": o.interpretation, "critical": o.critical,
+        reference = o.ref_text or (_range_text(o.ref_low, o.ref_high, o.unit) if o.ref_low is not None or o.ref_high is not None else None)
+        abnormal.append({**a.model_dump(), "value": o.value_text or o.value_num, "unit": o.unit,
+                         "reference": reference, "flag": o.interpretation, "critical": o.critical,
                          "date": o.effective_date.isoformat() if o.effective_date else None})
     medications = []
     for m in text.medications:
@@ -171,7 +174,7 @@ def _assemble(db: Session, text: SummaryText, lang: str, facts: dict[str, Any], 
             continue
         medications.append({**m.model_dump(), "strength": row.strength, "morning": row.morning, "afternoon": row.afternoon,
                             "night": row.night, "meal_relation": row.meal_relation, "duration_days": row.duration_days,
-                            "frequency": row.frequency_raw, "status": row.status})
+                            "frequency": row.frequency_raw, "status": medication_status(row)})
     criticals = [r for r in (facts.get("results") or facts.get("latest_results") or []) if r.get("critical")]
     return {
         **text.model_dump(), "abnormal": abnormal, "medications": medications,

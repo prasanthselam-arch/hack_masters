@@ -20,11 +20,12 @@ def init_db() -> None:
 
     SQLModel.metadata.create_all(engine)
     _add_missing_columns()
+    _migrate_data()
 
 
 def _add_missing_columns() -> None:
     """create_all() does not alter existing tables; add columns introduced after a database was created."""
-    added = {"patient": {"owner_id": "VARCHAR"}}
+    added = {"patient": {"owner_id": "VARCHAR", "relationship": "VARCHAR"}}
     insp = inspect(engine)
     with engine.begin() as conn:
         for table, cols in added.items():
@@ -35,6 +36,27 @@ def _add_missing_columns() -> None:
                 if col not in have:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {sql_type}"))
                     conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table}_{col} ON {table} ({col})"))
+
+
+def _migrate_data() -> None:
+    """Idempotent fix-ups for data saved by earlier versions."""
+    with engine.begin() as conn:
+        # Indian mobile numbers used to be stored as 10 bare digits; now everything is E.164.
+        for table, col in (("account", "login"), ("patient", "phone")):
+            rows = conn.execute(text(f"SELECT id, {col} FROM {table} WHERE {col} IS NOT NULL")).all()
+            for row_id, value in rows:
+                digits = "".join(ch for ch in value if ch.isdigit())
+                if "@" not in value and not value.startswith("+") and len(digits) == 10 and digits[0] in "6789":
+                    conn.execute(text(f"UPDATE {table} SET {col} = :v WHERE id = :id"), {"v": "+91" + digits, "id": row_id})
+        # Each account's first profile is the account holder's own.
+        owners = conn.execute(text("SELECT DISTINCT owner_id FROM patient WHERE owner_id IS NOT NULL")).scalars().all()
+        for owner in owners:
+            has_self = conn.execute(text("SELECT 1 FROM patient WHERE owner_id = :o AND relationship = 'self'"), {"o": owner}).first()
+            if not has_self:
+                first = conn.execute(text("SELECT id FROM patient WHERE owner_id = :o AND relationship IS NULL ORDER BY created_at LIMIT 1"),
+                                     {"o": owner}).scalar()
+                if first:
+                    conn.execute(text("UPDATE patient SET relationship = 'self' WHERE id = :id"), {"id": first})
 
 
 def get_session() -> Iterator[Session]:

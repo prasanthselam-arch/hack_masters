@@ -613,6 +613,9 @@ def refresh_review(p: ReviewPayload, sex: str | None) -> ReviewPayload:
         if o.value_num is not None and (o.ref_low is not None or o.ref_high is not None):
             o.interpretation = "L" if (o.ref_low is not None and o.value_num < o.ref_low) else \
                 "H" if (o.ref_high is not None and o.value_num > o.ref_high) else "N"
+            bound = (o.value_text or "").strip()
+            if (bound.startswith(("<", "≤")) and o.interpretation == "H") or (bound.startswith((">", "≥")) and o.interpretation == "L"):
+                o.interpretation = None  # a bound-only result such as "<0.5" cannot be classified against this range
             if entry and entry.critical and (not o.unit or norm_unit(o.unit) == norm_unit(entry.unit)):
                 clo, chi = entry.critical
                 if clo is not None and o.value_num < clo:

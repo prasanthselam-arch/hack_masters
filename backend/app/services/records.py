@@ -2,6 +2,7 @@
 
 import logging
 import shutil
+from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 from sqlmodel import Session, delete, select
@@ -9,6 +10,7 @@ from sqlmodel import Session, delete, select
 from app.config import get_settings
 from app.fhir import mapper
 from app.models.tables import (
+    AbhaSession,
     Condition,
     DiagnosticReport,
     Document,
@@ -39,7 +41,10 @@ def delete_document(db: Session, doc: Document) -> None:
     clear_document_records(db, doc.id)
     db.delete(doc)
     db.commit()
-    shutil.rmtree(get_settings().storage_dir / doc.id, ignore_errors=True)
+    folder = get_settings().storage_dir / doc.id
+    shutil.rmtree(folder, ignore_errors=True)
+    if doc.file_path and not Path(doc.file_path).resolve().is_relative_to(folder.resolve()):
+        Path(doc.file_path).unlink(missing_ok=True)  # ABHA imports keep their bundle outside the document folder
 
 
 def delete_patient(db: Session, patient: Patient) -> None:
@@ -48,6 +53,7 @@ def delete_patient(db: Session, patient: Patient) -> None:
         delete_document(db, d)
     for s in db.exec(select(Summary).where(Summary.patient_id == patient.id)).all():
         db.delete(s)
+    db.exec(delete(AbhaSession).where(AbhaSession.patient_id == patient.id))  # type: ignore[arg-type]
     db.delete(patient)
     db.commit()
 
@@ -152,7 +158,7 @@ def confirm(db: Session, doc: Document, payload: ReviewPayload) -> dict[str, int
     doc.confirmed_at = datetime.now(timezone.utc)
     doc.fhir_json = mapper.document_reference_resource(doc)
     fhir_errors.extend(mapper.validate_resource(doc.fhir_json))
-    doc.pipeline_log = [*(doc.pipeline_log or []), {"stage": "fhir", "resources": len(obs_rows) + len(payload.medications) + len(payload.conditions),
+    doc.pipeline_log = [*(x for x in doc.pipeline_log or [] if x.get("stage") != "fhir"), {"stage": "fhir", "resources": len(obs_rows) + len(payload.medications) + len(payload.conditions),
                                                      "errors": fhir_errors[:10]}]
     if fhir_errors:
         log.warning("FHIR validation errors for %s: %s", doc.id, fhir_errors[:3])
@@ -161,6 +167,13 @@ def confirm(db: Session, doc: Document, payload: ReviewPayload) -> dict[str, int
     db.commit()
     return {"observations": len(obs_rows), "medications": len(payload.medications), "conditions": len(payload.conditions),
             "fhir_errors": len(fhir_errors)}
+
+
+def medication_status(m: MedicationRequest, today: date | None = None) -> str:
+    """A course with a known length is over once its days have passed, however long ago it was confirmed."""
+    if m.status == "active" and m.duration_days and m.authored_on and m.authored_on + timedelta(days=m.duration_days) < (today or date.today()):
+        return "completed"
+    return m.status
 
 
 def reconcile_medications(db: Session, patient_id: str) -> None:
