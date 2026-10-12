@@ -3,6 +3,18 @@ export interface Account {
   name: string
   login: string
   created_at: string
+  /** Where codes and alerts go; the login itself may be a mobile number. */
+  email: string | null
+  email_verified: boolean
+  notify: { security: boolean; medicines: boolean; weekly: boolean }
+}
+
+/** Reply when an email code was sent. `dev_code` only comes from local servers without an email provider. */
+export interface CodeSent {
+  sent_to?: string
+  expires_in: number
+  resend_in: number
+  dev_code?: string
 }
 
 export const RELATIONSHIPS = [

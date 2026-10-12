@@ -418,7 +418,22 @@
     "signed_in_as": "Signed in as",
     "hero_title": "All your health records, explained simply",
     "show_password": "Show password",
-    "hide_password": "Hide password"
+    "hide_password": "Hide password",
+    "forgot": "Forgot password?",
+    "forgot_title": "Reset your password",
+    "forgot_sub": "Enter the email or mobile number you sign in with. We'll email a code to the account's verified email.",
+    "forgot_no_email": "Never added an email to your account? Then it can't be reset by email. If you're still signed in on another device, add an email under Family & account.",
+    "send_code": "Email me a code",
+    "verify_title": "Check your email",
+    "verify_sub": "Enter the code we sent to finish creating your account.",
+    "verify_create": "Verify and create account",
+    "change_details": "Change details",
+    "back_to_sign_in": "Back to sign in",
+    "reset_title": "Set a new password",
+    "reset_sub": "Enter the code from your email and choose a new password. Other devices will be signed out.",
+    "reset_submit": "Save password and sign in",
+    "email": "Email",
+    "email_hint": "We send a code here to verify your account, and it's how you reset a forgotten password."
   },
   "profile": {
     "add": "Add family member",
@@ -502,5 +517,39 @@
   "theme": {
     "to_dark": "Switch to dark mode",
     "to_light": "Switch to light mode"
+  },
+  "code": {
+    "label": "6-digit code",
+    "sent": "We sent a 6-digit code to {{email}}. It expires in {{minutes}} minutes.",
+    "sent_reset": "If that account has a verified email, we've sent a 6-digit code to it. It expires in {{minutes}} minutes.",
+    "spam": "Can't find it? Check your spam or promotions folder.",
+    "dev": "Email isn't set up on this local server, so here is the code: {{code}}",
+    "invalid": "Enter the 6 digits from the email",
+    "resend": "Send a new code",
+    "resend_in": "Send a new code in {{count}} s"
+  },
+  "email": {
+    "title": "Email for codes and alerts",
+    "sub": "Used to verify changes, reset a forgotten password and send the notifications you choose.",
+    "verified": "Verified",
+    "not_verified": "Not verified",
+    "change": "Change email",
+    "new": "New email",
+    "verify": "Verify email",
+    "password_needed": "Enter your current password to change your email",
+    "banner_title": "Add an email to protect your account",
+    "banner_body": "Without a verified email you can't reset a forgotten password, and you won't get security alerts or medicine reminders.",
+    "banner_action": "Add email"
+  },
+  "notify": {
+    "title": "Email notifications",
+    "sub": "Choose what we email you about.",
+    "needs_email": "Verify an email first to get these.",
+    "security": "Security alerts",
+    "security_sub": "New sign-ins, and changes to your password or email",
+    "medicines": "Medicine reminders",
+    "medicines_sub": "When a medicine course is about to end or has just ended",
+    "weekly": "Weekly summary",
+    "weekly_sub": "New records, results outside the usual range and active medicines"
   }
 }

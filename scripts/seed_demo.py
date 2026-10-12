@@ -36,10 +36,20 @@ def wait(c: httpx.Client, did: str) -> dict:
     raise TimeoutError(did)
 
 
+def register(c: httpx.Client, name: str, login: str, password: str) -> httpx.Response:
+    """Sign up with the email code. Local servers without an email provider return the code; otherwise ask for it."""
+    email = login if "@" in login else input(f"email for {login}: ").strip()
+    sent = c.post("/api/auth/register/start", json={"name": name, "login": login, "email": email, "password": password})
+    if sent.status_code != 200:
+        return sent
+    code = sent.json().get("dev_code") or input(f"code emailed to {email}: ").strip()
+    return c.post("/api/auth/register/verify", json={"email": email, "code": code})
+
+
 def sign_in(c: httpx.Client, login: str, password: str, name: str) -> None:
     r = c.post("/api/auth/login", json={"login": login, "password": password})
     if r.status_code == 401:
-        r = c.post("/api/auth/register", json={"name": name, "login": login, "password": password})
+        r = register(c, name, login, password)
     if r.status_code != 200:
         sys.exit(f"could not sign in as {login}: {r.text}")
     print(f"signed in as {login}")

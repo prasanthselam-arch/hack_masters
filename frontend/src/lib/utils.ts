@@ -57,3 +57,6 @@ export function ageOf(birth: string | null): number | null {
   if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) age--
   return age >= 0 ? age : null
 }
+
+/** A complete 6-digit email code. */
+export const codeComplete = (code: string) => /^\d{6}$/.test(code)

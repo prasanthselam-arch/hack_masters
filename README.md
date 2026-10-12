@@ -92,6 +92,13 @@ only its own profiles and documents, and can hold several profiles, for example 
 another account's records return 404. Sessions use an HttpOnly cookie (30 days), passwords are stored as scrypt
 hashes, and repeated wrong passwords are throttled.
 
+Every new account verifies an email with a 6-digit code (accounts that sign in with a mobile number add one; free
+SMS isn't available, so mobile numbers aren't verified by text). The email is used to reset a forgotten password and,
+if the user keeps them on, for security alerts (new sign-in, password or email changed), medicine-course reminders and
+a weekly summary. Codes expire after 10 minutes, allow 5 tries, and at most 5 can be sent to an email per hour.
+Accounts created before this see a reminder on the dashboard to add an email. Locally, without an email provider,
+the code is shown on screen instead of being emailed.
+
 To load a demo account (`demo@healthcopilot.in`, password `demo12345`) with a patient, an ABHA link and a year of
 records (no LLM calls needed):
 
@@ -145,7 +152,33 @@ shuts down. Each day keeps one commit, so the repository also gives you a daily 
    - `DATA_REPO`: the data repository as `owner/name`, for example `your-name/health-copilot-data`;
    - `DATA_REPO_TOKEN`: the token from step 2.
 4. **Deploy.** The first build takes a few minutes. The site is then at `https://health-copilot-<id>.onrender.com`,
-   and every push to `main` redeploys it.
+   and every push to `main` redeploys it once the GitHub Actions checks (`.github/workflows/ci.yml`: backend
+   tests, frontend lint and build) pass. A push that fails them is not deployed; the live site keeps running.
+
+**Email (sign-up codes, password reset, alerts).** Emails are sent from your own Gmail by a small Google Apps Script
+web app (free, about 100 emails a day). Render's free plan blocks SMTP, so the app reaches the script over HTTPS:
+
+1. In Render, open the service's **Environment** tab and copy the generated `GOOGLE_SCRIPT_SECRET` value.
+2. Signed in to the Gmail account that should send the emails, open [script.google.com](https://script.google.com),
+   choose **New project**, replace the code with [`scripts/google-apps-script/Code.gs`](scripts/google-apps-script/Code.gs)
+   and save.
+3. Open **Project Settings** (gear icon) → **Script properties** → **Add script property**: name `SECRET`, value
+   from step 1. Save.
+4. **Deploy → New deployment**, pick type **Web app**, set **Execute as: Me** and **Who has access: Anyone**, then
+   **Deploy**. Allow access when Google asks (it's your own script: **Advanced → Go to … (unsafe)** is expected).
+   Copy the **Web app URL** (it ends in `/exec`).
+5. Back in Render's **Environment** tab, add `GOOGLE_SCRIPT_URL` with that URL and save.
+
+Until this is done, the live site can't send codes, so sign-up and password reset show "Email isn't set up on this
+server yet". If you edit the script later, use **Deploy → Manage deployments → Edit → New version** so the URL stays
+the same.
+
+**Daily reminders and weekly summaries.** A sleeping free service runs no timers, so the scheduled GitHub Action
+`.github/workflows/notify.yml` wakes it every day at 9 AM IST and runs the job. To turn it on, copy the
+`CRON_SECRET` value Render generated (service **Environment** tab) and, in this GitHub repository's **Settings →
+Secrets and variables → Actions**, add it as the secret `CRON_SECRET` and add the variable `APP_URL` with the site's
+address (for example `https://health-copilot-kl7g.onrender.com`). Run it once by hand from the **Actions** tab to
+check. GitHub pauses scheduled workflows after 60 days without commits; re-enable it from the Actions tab if that happens.
 
 Good to know:
 
@@ -174,6 +207,10 @@ Good to know:
 | `DATA_REPO` / `DATA_REPO_TOKEN` | — | Private GitHub repository (`owner/name`) and fine-grained token that keep the data; see [Deploy to Render](#deploy-to-render-free) |
 | `DATA_REPO_BRANCH` | `main` | Branch for the data snapshots |
 | `DATA_SYNC_SECONDS` | `60` | How often to check for changes to push |
+| `GOOGLE_SCRIPT_URL` / `GOOGLE_SCRIPT_SECRET` | — | Google Apps Script web app that sends the emails, and its shared secret. Without a URL, local http:// servers show codes on screen; HTTPS servers refuse to send |
+| `MAIL_FROM_NAME` | `Health Copilot` | Sender name on emails |
+| `APP_URL` | Render's address, else `http://localhost:5173` | Used for links in emails |
+| `CRON_SECRET` | — | Lets the daily GitHub Action run reminders and weekly summaries |
 
 The **Gemini free tier allows only about 20 requests per model per day**. One document uses 3 requests (classify,
 extract, verify), and each summary or chat answer uses one or two more. For demos and evaluation runs, use a key with
@@ -182,7 +219,7 @@ billing enabled.
 ## Tests and evaluation
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q        # 85 unit tests: validators, knowledge base, FHIR, ABHA, safety, records, data sync
+cd backend && .venv/bin/python -m pytest -q        # 93 unit tests: validators, knowledge base, FHIR, ABHA, safety, records, data sync, email codes
 backend/.venv/bin/python eval/make_samples.py      # regenerate the 10 synthetic documents + ground truth (deterministic)
 backend/.venv/bin/python eval/run_eval.py         # run the pipeline on all samples and write eval/report.md (about 30 LLM calls)
 backend/.venv/bin/python eval/run_eval.py --rescore eval/runs/<run>   # re-score saved outputs without LLM calls

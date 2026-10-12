@@ -17,6 +17,12 @@ services:
         sync: false
       - key: DATA_REPO_TOKEN
         sync: false
+      - key: GOOGLE_SCRIPT_URL
+        sync: false
+      - key: GOOGLE_SCRIPT_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
       - key: COOKIE_SECURE
         value: "true"
       - key: WORKER_THREADS

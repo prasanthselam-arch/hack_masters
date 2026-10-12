@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, ArrowRight, ClipboardCheck, FileText, FlaskConical, HeartPulse, MessageCircleHeart, Pill, ShieldCheck, Sparkles, Stethoscope, Upload } from 'lucide-react'
+import { Activity, ArrowRight, ClipboardCheck, FileText, FlaskConical, HeartPulse, MailWarning, MessageCircleHeart, Pill, ShieldCheck, Sparkles, Stethoscope, Upload } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { CriticalBanner, FlagBadge, MedSchedule } from '@/components/medical'
 import { SummaryView } from '@/components/SummaryView'
 import { Badge, Button, Card, CardHeader, Empty, ErrorNote, Spinner } from '@/components/ui'
 import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { useActivePatient, useLang } from '@/lib/patient'
 import { fmtDate, fmtNum, rangeText } from '@/lib/utils'
 
@@ -50,6 +51,8 @@ export default function Dashboard() {
             : []
         }
       />
+
+      <VerifyEmailBanner />
 
       {c.pending_review > 0 && <PendingReview patientId={patient.id} count={c.pending_review} />}
 
@@ -317,6 +320,29 @@ function PendingReview({ patientId, count }: { patientId: string; count: number 
           </Button>
         </Link>
       )}
+    </div>
+  )
+}
+
+function VerifyEmailBanner() {
+  const { t } = useTranslation()
+  const { account } = useAuth()
+  if (!account || account.email_verified) return null
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-sky-50 to-indigo-50 px-5 py-4 shadow-[var(--shadow-soft)] ring-1 ring-sky-200/80">
+      <div className="flex items-start gap-3 text-sky-950">
+        <MailWarning className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+        <div>
+          <p className="font-medium">{t('email.banner_title')}</p>
+          <p className="text-sm text-sky-900/80">{t('email.banner_body')}</p>
+        </div>
+      </div>
+      <Link to="/profiles#email">
+        <Button size="sm">
+          {t('email.banner_action')}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </Link>
     </div>
   )
 }

@@ -8,7 +8,8 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
-from sqlmodel import Session, select
+from sqlalchemy import and_, or_
+from sqlmodel import Session, col, select
 
 from app.config import get_settings
 from app.models.tables import Account, AuthSession
@@ -80,14 +81,50 @@ def _record_failure(login: str) -> None:
         _failures.setdefault(login, []).append(time.monotonic())
 
 
-def register(db: Session, name: str, login: str, password: str) -> Account:
+def normalize_email(raw: str) -> str:
+    try:
+        return contact.normalize_email(raw)
+    except contact.ContactError as e:
+        raise AuthError(str(e)) from e
+
+
+def email_in_use(db: Session, email: str, exclude_id: str | None = None) -> bool:
+    """An email belongs to one account, whether it signs in with it or only gets codes and alerts there."""
+    q = select(Account).where(or_(Account.login == email, and_(Account.email == email, col(Account.email_verified_at).is_not(None))))
+    return any(a.id != exclude_id for a in db.exec(q).all())
+
+
+def find_account(db: Session, login: str) -> Account | None:
+    """By login, or by the verified email of an account that signs in with a mobile number."""
+    login = normalize_login(login)
+    acc = db.exec(select(Account).where(Account.login == login)).first()
+    if not acc and "@" in login:
+        acc = db.exec(select(Account).where(Account.email == login, col(Account.email_verified_at).is_not(None))).first()
+    return acc
+
+
+def signup_details(db: Session, name: str, login: str, email: str | None, password: str) -> tuple[str, dict]:
+    """Check a sign-up before its email code is sent. Returns the email to verify and what to save once it is."""
     login = normalize_login(login)
     if not name.strip():
         raise AuthError("Please enter your name")
+    email = login if "@" in login else normalize_email(email) if email and email.strip() else None
+    if not email:
+        raise AuthError("Please add your email. We send a code there to verify your account and to reset your password")
     check_password_strength(password)
     if db.exec(select(Account).where(Account.login == login)).first():
         raise AuthError("An account with this email or mobile number already exists. Please sign in")
-    acc = Account(login=login, name=name.strip(), password_hash=hash_password(password))
+    if email_in_use(db, email):
+        raise AuthError("Another account already uses this email. Sign in, or use a different email")
+    return email, {"name": name.strip()[:100], "login": login, "password_hash": hash_password(password)}
+
+
+def register(db: Session, details: dict, email: str) -> Account:
+    """Create the account once its email code has been checked."""
+    if db.exec(select(Account).where(Account.login == details["login"])).first() or email_in_use(db, email):
+        raise AuthError("An account with this email or mobile number already exists. Please sign in")
+    acc = Account(login=details["login"], name=details["name"], password_hash=details["password_hash"], email=email,
+                  email_verified_at=datetime.now(timezone.utc))
     db.add(acc)
     db.commit()
     db.refresh(acc)
@@ -97,7 +134,7 @@ def register(db: Session, name: str, login: str, password: str) -> Account:
 def authenticate(db: Session, login: str, password: str) -> Account:
     login = normalize_login(login)
     _check_throttle(login)
-    acc = db.exec(select(Account).where(Account.login == login)).first()
+    acc = find_account(db, login)
     if not acc or not verify_password(password, acc.password_hash):
         _record_failure(login)
         raise AuthError("Incorrect email/mobile number or password")
@@ -152,13 +189,35 @@ def update_account(db: Session, acc: Account, name: str | None, login: str | Non
         if new_login != acc.login:
             if not current_password or not verify_password(current_password, acc.password_hash):
                 raise AuthError("Enter your current password to change your email or mobile number")
-            if db.exec(select(Account).where(Account.login == new_login)).first():
+            if db.exec(select(Account).where(Account.login == new_login)).first() or (
+                    "@" in new_login and email_in_use(db, new_login, exclude_id=acc.id)):
                 raise AuthError("Another account already uses this email or mobile number")
             acc.login = new_login
     db.add(acc)
     db.commit()
     db.refresh(acc)
     return acc
+
+
+def set_password(db: Session, acc: Account, new_password: str) -> None:
+    """After an email code: no current password needed, and every device is signed out."""
+    check_password_strength(new_password)
+    acc.password_hash = hash_password(new_password)
+    db.add(acc)
+    db.commit()
+    end_all_sessions(db, acc.id)
+    with _lock:
+        _failures.pop(acc.login, None)
+
+
+def set_email(db: Session, acc: Account, email: str) -> None:
+    if email_in_use(db, email, exclude_id=acc.id):
+        raise AuthError("Another account already uses this email")
+    acc.email = email
+    acc.email_verified_at = datetime.now(timezone.utc)
+    db.add(acc)
+    db.commit()
+    db.refresh(acc)
 
 
 def change_password(db: Session, acc: Account, current_password: str, new_password: str, keep_token: str | None) -> None:

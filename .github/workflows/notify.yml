@@ -1,0 +1,24 @@
+# Medicine reminders and weekly summaries. A sleeping free Render service runs no timers, so this wakes it daily.
+# Needs the repository variable APP_URL and the secret CRON_SECRET (the value Render generated for the service).
+name: Daily notifications
+
+on:
+  schedule:
+    - cron: "30 3 * * *"  # 09:00 IST
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the daily notification job
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::notice::Set the APP_URL variable and the CRON_SECRET secret to turn this job on."
+            exit 0
+          fi
+          curl -fsS --retry 5 --retry-delay 30 --retry-all-errors --max-time 120 \
+            -X POST -H "X-Cron-Secret: $CRON_SECRET" "${APP_URL%/}/api/internal/notifications/run"

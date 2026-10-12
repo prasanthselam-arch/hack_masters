@@ -24,9 +24,12 @@ def engine():
     app.dependency_overrides.clear()
 
 
-def _client(name: str, login: str, password: str = "secret-pass") -> TestClient:
+def _client(name: str, login: str, password: str = "secret-pass", email: str | None = None) -> TestClient:
     c = TestClient(app)
-    r = c.post("/api/auth/register", json={"name": name, "login": login, "password": password})
+    email = email or (login.lower() if "@" in login else f"{''.join(ch for ch in login if ch.isdigit())}@example.com")
+    sent = c.post("/api/auth/register/start", json={"name": name, "login": login, "email": email, "password": password})
+    assert sent.status_code == 200, sent.text
+    r = c.post("/api/auth/register/verify", json={"email": email, "code": sent.json()["dev_code"]})
     assert r.status_code == 200, r.text
     return c
 
@@ -46,8 +49,9 @@ def test_login_normalization_and_password_hash():
 def test_register_login_logout(engine):
     c = _client("Asha", "asha@example.com")
     assert c.get("/api/auth/me").json()["name"] == "Asha"
-    assert TestClient(app).post("/api/auth/register", json={"name": "X", "login": "ASHA@example.com", "password": "another-pass"}).status_code == 400
-    assert TestClient(app).post("/api/auth/register", json={"name": "X", "login": "x@example.com", "password": "short"}).status_code == 400
+    start = "/api/auth/register/start"
+    assert TestClient(app).post(start, json={"name": "X", "login": "ASHA@example.com", "password": "another-pass"}).status_code == 400
+    assert TestClient(app).post(start, json={"name": "X", "login": "x@example.com", "password": "short"}).status_code == 400
 
     c.post("/api/auth/logout")
     assert c.get("/api/auth/me").status_code == 401

@@ -28,6 +28,36 @@ class Account(SQLModel, table=True):
     name: str
     password_hash: str
     created_at: datetime = Field(default_factory=utcnow)
+    email: str | None = Field(default=None, index=True)  # for codes and alerts; the login itself may be a mobile number
+    email_verified_at: datetime | None = None
+    notify_security: bool = True
+    notify_medicines: bool = True
+    notify_weekly: bool = True
+    last_weekly_at: datetime | None = None
+
+
+class EmailCode(SQLModel, table=True):
+    """A one-time code sent by email. Only a hash is kept; rows stay for an hour to rate-limit new codes."""
+
+    id: str = Field(default_factory=new_id, primary_key=True)
+    email: str = Field(index=True)
+    purpose: str  # signup | reset | email
+    account_id: str | None = Field(default=None, index=True)
+    code_hash: str
+    payload: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))  # signup: name, login, password_hash
+    attempts: int = 0
+    used: bool = False
+    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime
+
+
+class Notification(SQLModel, table=True):
+    """Emails already sent, so a scheduled job never repeats one."""
+
+    id: str = Field(default_factory=new_id, primary_key=True)
+    account_id: str = Field(index=True)
+    key: str = Field(index=True)  # e.g. med:<medication id>
+    sent_at: datetime = Field(default_factory=utcnow)
 
 
 class AuthSession(SQLModel, table=True):

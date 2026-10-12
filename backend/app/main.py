@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, documents, insights, patients, voice
+from app.api import auth, documents, insights, internal, patients, voice
 from app.config import get_settings
 from app.db import init_db
 from app.knowledge import drugs, icd10, labs
@@ -36,6 +36,7 @@ app.include_router(patients.router)
 app.include_router(documents.router)
 app.include_router(insights.router)
 app.include_router(voice.router)
+app.include_router(internal.router)
 
 
 @app.get("/api/health")

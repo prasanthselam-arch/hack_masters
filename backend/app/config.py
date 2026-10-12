@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -43,6 +44,19 @@ class Settings(BaseSettings):
     session_days: int = 30
     cookie_secure: bool = False  # set true when served over HTTPS
     demo_otp: str = "123456"
+
+    # Email (codes, security alerts, reminders) through a Google Apps Script web app that sends from your Gmail
+    # (scripts/google-apps-script/Code.gs). Render's free plan blocks SMTP, so Gmail can't be used directly.
+    google_script_url: str = ""
+    google_script_secret: str = ""
+    mail_from_name: str = "Health Copilot"
+    app_url: str = Field("http://localhost:5173", validation_alias=AliasChoices("APP_URL", "RENDER_EXTERNAL_URL"))
+    cron_secret: str = ""  # lets the scheduled GitHub Action run the daily notification job
+
+    @property
+    def mail_debug(self) -> bool:
+        """Local development without an email provider: codes are shown on screen instead of emailed."""
+        return not self.google_script_url and not self.cookie_secure
 
     # Hosting: the built frontend served by FastAPI, and a private GitHub repository ("owner/name") that keeps
     # the database and uploads across restarts on hosts without a persistent disk (see services/datastore.py).

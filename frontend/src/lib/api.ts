@@ -1,5 +1,6 @@
 import type {
   Account,
+  CodeSent,
   ChatReply,
   DocumentInfo,
   Health,
@@ -60,10 +61,23 @@ const json = (method: string, body?: unknown): RequestInit => ({
 export const api = {
   health: () => request<Health>('/api/health'),
   me: () => request<Account>('/api/auth/me'),
-  register: (body: { name: string; login: string; password: string }) => request<Account>('/api/auth/register', json('POST', body)),
+  registerStart: (body: { name: string; login: string; email?: string; password: string }) =>
+    request<CodeSent>('/api/auth/register/start', json('POST', body)),
+  registerVerify: (body: { email: string; code: string }) => request<Account>('/api/auth/register/verify', json('POST', body)),
+  forgotPassword: (login: string) => request<CodeSent>('/api/auth/forgot', json('POST', { login })),
+  resetPassword: (body: { login: string; code: string; password: string }) => request<Account>('/api/auth/reset', json('POST', body)),
+  emailStart: (body: { email: string; current_password?: string }) => request<CodeSent>('/api/auth/email/start', json('POST', body)),
+  emailVerify: (code: string) => request<Account>('/api/auth/email/verify', json('POST', { code })),
   login: (body: { login: string; password: string }) => request<Account>('/api/auth/login', json('POST', body)),
   logout: () => request<{ signed_out: boolean }>('/api/auth/logout', json('POST')),
-  updateMe: (body: { name?: string; login?: string; current_password?: string }) => request<Account>('/api/auth/me', json('PATCH', body)),
+  updateMe: (body: {
+    name?: string
+    login?: string
+    current_password?: string
+    notify_security?: boolean
+    notify_medicines?: boolean
+    notify_weekly?: boolean
+  }) => request<Account>('/api/auth/me', json('PATCH', body)),
   changePassword: (body: { current_password: string; new_password: string }) =>
     request<{ changed: boolean }>('/api/auth/password', json('POST', body)),
   deleteAccount: (password: string) => request<{ deleted: boolean }>('/api/auth/delete-account', json('POST', { password })),

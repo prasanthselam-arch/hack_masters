@@ -25,17 +25,24 @@ def init_db() -> None:
 
 def _add_missing_columns() -> None:
     """create_all() does not alter existing tables; add columns introduced after a database was created."""
-    added = {"patient": {"owner_id": "VARCHAR", "relationship": "VARCHAR"}}
+    added = {
+        "patient": {"owner_id": ("VARCHAR", True), "relationship": ("VARCHAR", True)},
+        "account": {"email": ("VARCHAR", True), "email_verified_at": ("TIMESTAMP", False),
+                    "notify_security": ("BOOLEAN NOT NULL DEFAULT TRUE", False),
+                    "notify_medicines": ("BOOLEAN NOT NULL DEFAULT TRUE", False),
+                    "notify_weekly": ("BOOLEAN NOT NULL DEFAULT TRUE", False), "last_weekly_at": ("TIMESTAMP", False)},
+    }
     insp = inspect(engine)
     with engine.begin() as conn:
         for table, cols in added.items():
             if not insp.has_table(table):
                 continue
             have = {c["name"] for c in insp.get_columns(table)}
-            for col, sql_type in cols.items():
+            for col, (sql_type, indexed) in cols.items():
                 if col not in have:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {sql_type}"))
-                    conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table}_{col} ON {table} ({col})"))
+                    if indexed:
+                        conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table}_{col} ON {table} ({col})"))
 
 
 def _migrate_data() -> None:
@@ -48,6 +55,8 @@ def _migrate_data() -> None:
                 digits = "".join(ch for ch in value if ch.isdigit())
                 if "@" not in value and not value.startswith("+") and len(digits) == 10 and digits[0] in "6789":
                     conn.execute(text(f"UPDATE {table} SET {col} = :v WHERE id = :id"), {"v": "+91" + digits, "id": row_id})
+        # Accounts that sign in with an email use it for codes and alerts too (it still needs verifying).
+        conn.execute(text("UPDATE account SET email = login WHERE email IS NULL AND login LIKE '%@%'"))
         # Each account's first profile is the account holder's own.
         owners = conn.execute(text("SELECT DISTINCT owner_id FROM patient WHERE owner_id IS NOT NULL")).scalars().all()
         for owner in owners:

@@ -19,6 +19,14 @@ import httpx
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def register(c: httpx.Client, name: str, email: str, password: str) -> httpx.Response:
+    """Sign up with the email code (needs a local server without an email provider, which returns the code)."""
+    sent = c.post("/api/auth/register/start", json={"name": name, "login": email, "password": password})
+    if sent.status_code != 200 or "dev_code" not in sent.json():
+        sys.exit(f"sign-up needs a local server without GOOGLE_SCRIPT_URL: {sent.text}")
+    return c.post("/api/auth/register/verify", json={"email": email, "code": sent.json()["dev_code"]})
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--api", default="http://127.0.0.1:8000")
@@ -39,12 +47,12 @@ def main() -> int:
     login = f"e2e-{secrets.token_hex(4)}@example.com"
     print("accounts")
     check("protected API needs sign-in", c.get("/api/patients").status_code == 401)
-    reg = c.post("/api/auth/register", json={"name": "E2E Smoke Test", "login": login, "password": password})
+    reg = register(c, "E2E Smoke Test", login, password)
     check("register signs in", reg.status_code == 200 and c.get("/api/auth/me").status_code == 200, login)
     if reg.status_code != 200:
         return 1
     other = httpx.Client(base_url=args.api, timeout=60)
-    other.post("/api/auth/register", json={"name": "Other", "login": "x" + login, "password": password}).raise_for_status()
+    register(other, "Other", "x" + login, password).raise_for_status()
     pid = c.post("/api/patients", json={"name": "E2E Smoke Test", "gender": "male", "birth_date": "1980-01-01"}).json()["id"]
     try:
         print("upload + pipeline")
