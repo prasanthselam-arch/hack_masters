@@ -23,7 +23,7 @@ export function PageViewer({ pages, fileUrl, page, onPage }: { pages: string[]; 
     )
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl bg-slate-800 ring-1 ring-slate-700">
+    <div className="theme-fixed flex h-full flex-col overflow-hidden rounded-xl bg-slate-800 ring-1 ring-slate-700">
       <div className="flex items-center justify-between gap-2 border-b border-slate-700 px-2 py-1.5 text-slate-200">
         <div className="flex items-center gap-1">
           <Button size="icon" variant="ghost" className="text-slate-200 hover:bg-slate-700" aria-label={t('viewer.previous')} disabled={current <= 1} onClick={() => go(current - 1)}>

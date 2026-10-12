@@ -3,11 +3,13 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LANGUAGES } from '@/i18n'
 import { Brand } from './Layout'
+import { ThemeToggle } from './ThemeToggle'
 
 /** Full-page backdrop for the sign-in and profile setup screens. */
 export function AuroraPage({ children }: { children: ReactNode }) {
   return (
     <div className="relative isolate min-h-full overflow-hidden">
+      <ThemeToggle className="absolute top-4 right-4 z-10 sm:top-6 sm:right-6" />
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="animate-float absolute -top-40 -left-32 h-[34rem] w-[34rem] rounded-full bg-brand-300/35 blur-3xl" />
         <div className="animate-float absolute top-1/3 -right-40 h-[30rem] w-[30rem] rounded-full bg-sky-300/30 blur-3xl [animation-delay:-5s]" />

@@ -21,6 +21,7 @@ import { useLang, usePatient } from '@/lib/patient'
 import { cn } from '@/lib/utils'
 import { formatPhone } from '@/lib/phone'
 import { Avatar } from './Avatar'
+import { ThemeToggle } from './ThemeToggle'
 import { Disclaimer } from './medical'
 import { Spinner } from './ui'
 
@@ -201,7 +202,7 @@ export function Layout() {
   const { patient } = usePatient()
   return (
     <div className="flex min-h-full">
-      <aside className="sticky top-0 hidden h-screen w-[17rem] shrink-0 flex-col overflow-hidden bg-ink-900 px-4 py-5 text-slate-300 lg:flex">
+      <aside className="theme-fixed sticky top-0 hidden h-screen w-[17rem] shrink-0 flex-col overflow-hidden bg-ink-900 px-4 py-5 text-slate-300 lg:flex">
         {/* soft brand glows behind the sidebar content */}
         <div className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-brand-500/25 blur-3xl" />
         <div className="pointer-events-none absolute bottom-10 -right-24 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl" />
@@ -258,8 +259,9 @@ export function Layout() {
         <header className="sticky top-0 z-20 border-b border-slate-900/[0.06] bg-white/75 backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <Brand compact />
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <LanguageSwitcher className="w-28 sm:w-36" />
+              <ThemeToggle className="h-9 w-9" />
               <button onClick={signOut} title={t('auth.sign_out')} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
                 <LogOut className="h-4 w-4" />
               </button>
@@ -275,7 +277,7 @@ export function Layout() {
                 className={({ isActive }) =>
                   cn(
                     'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors',
-                    isActive ? 'bg-ink-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-900/[0.05]',
+                    isActive ? 'bg-ink-900 text-white shadow-sm dark:bg-brand-500' : 'text-slate-600 hover:bg-slate-900/[0.05]',
                   )
                 }
               >
@@ -286,7 +288,10 @@ export function Layout() {
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
+        <div className="hidden h-16 items-center justify-end gap-2 px-10 lg:flex">
+          <ThemeToggle />
+        </div>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:pt-1 lg:pb-9">
           <Suspense fallback={<Spinner label={t('common.loading')} />}>
             {/* remount on profile switch so chat history, ABHA transactions and drafts never carry over to another person */}
             <div key={`${patient?.id}:${location.pathname}`} className="animate-fade-up">

@@ -88,7 +88,7 @@ export default function Dashboard() {
       ) : (
         <>
           <Card className="overflow-hidden">
-            <div className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden bg-gradient-to-r from-brand-700 via-brand-600 to-sky-600 px-5 py-4 text-white">
+            <div className="theme-fixed relative flex flex-wrap items-center justify-between gap-3 overflow-hidden bg-gradient-to-r from-brand-700 via-brand-600 to-sky-600 px-5 py-4 text-white">
               <div className="bg-dots pointer-events-none absolute inset-0 opacity-60" />
               <div className="relative flex items-center gap-3">
                 <span className="rounded-xl bg-white/15 p-2 ring-1 ring-white/25 backdrop-blur">
@@ -231,7 +231,7 @@ function Hero({ name, lastRecord, stats }: { name: string; lastRecord: string | 
   const lang = useLang()
   const today = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { weekday: 'long', day: 'numeric', month: 'long' })
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-ink-900 text-white shadow-[var(--shadow-lift)]">
+    <section className="theme-fixed relative overflow-hidden rounded-3xl bg-ink-900 text-white shadow-[var(--shadow-lift)]">
       <div className="bg-dots pointer-events-none absolute inset-0 opacity-40" />
       <div className="animate-float pointer-events-none absolute -top-28 -right-20 h-80 w-80 rounded-full bg-brand-500/30 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-sky-500/15 blur-3xl" />

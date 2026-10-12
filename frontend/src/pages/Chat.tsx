@@ -148,7 +148,7 @@ export default function Chat() {
   const firstName = patient.name.split(' ')[0]
 
   return (
-    <div className="flex h-[calc(100dvh-12rem)] flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-9rem)]">
+    <div className="flex h-[calc(100dvh-12rem)] flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-11rem)]">
       <div className="mb-4 flex items-start justify-between gap-3 lg:mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{t('chat.title')}</h1>

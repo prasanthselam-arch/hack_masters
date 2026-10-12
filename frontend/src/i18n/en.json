@@ -498,5 +498,9 @@
     "zoom_out": "Zoom out",
     "zoom_in": "Zoom in",
     "rotate": "Rotate page"
+  },
+  "theme": {
+    "to_dark": "Switch to dark mode",
+    "to_light": "Switch to light mode"
   }
 }

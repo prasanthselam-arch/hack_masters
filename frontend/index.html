@@ -13,6 +13,13 @@
       rel="stylesheet"
     />
     <title>Health Copilot</title>
+    <script>
+      // apply the saved or system theme before first paint, so dark mode never flashes white
+      try {
+        const saved = localStorage.getItem('hc-theme')
+        if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark')
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
