@@ -61,8 +61,9 @@ npm run dev                     # http://localhost:5173 (proxies /api to :8000)
 
 Or use the control script, which runs both servers in the background with logs in `.run/`:
 
-On Ubuntu/Debian, `setup` also installs what the system is missing (Python 3.12 with venv, Node 22 from
-NodeSource, lsof, curl). It asks for your sudo password when it needs to, and works with `sudo ./run.sh setup` too:
+On Ubuntu/Debian, `setup` also installs what the system is missing (Python with venv, Node 22 from NodeSource,
+lsof, curl). The backend needs Python 3.11–3.13; on releases that only ship a newer Python, it installs
+[uv](https://docs.astral.sh/uv/) in `~/.local/bin` and uses a standalone Python 3.12 for the project. It asks for your sudo password when it needs to, and works with `sudo ./run.sh setup` too:
 only the system packages are installed as root, and the project files stay owned by you.
 
 ```bash

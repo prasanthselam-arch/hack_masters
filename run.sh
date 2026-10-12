@@ -157,12 +157,13 @@ as_root() { if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi; }
 install_system_deps() {
   local py missing=()
   py=$(find_python || true)
-  { [[ -n $py ]] && py_has_venv "$py"; } || missing+=(python)
+  # No suitable Python but uv already installed (from an earlier run): uv covers it.
+  { [[ -n $py ]] && py_has_venv "$py"; } || [[ -z $py && -n $(find_uv) ]] || missing+=(python)
   node_ok || missing+=(node)
   command -v lsof >/dev/null 2>&1 || missing+=(lsof)
   command -v curl >/dev/null 2>&1 || missing+=(curl)
   if [[ ${#missing[@]} -eq 0 ]]; then
-    dim "system: $py ($(py_version "$py")), node $(node --version), lsof, curl ok"
+    dim "system: python ${py:+$(py_version "$py")}${py:-via uv}, node $(node --version), lsof, curl ok"
     return 0
   fi
 
@@ -180,16 +181,7 @@ install_system_deps() {
     if [[ -n $py ]]; then
       as_root apt-get install -y -qq "python$(py_version "$py")-venv" >/dev/null
     elif ! as_root apt-get install -y -qq python3.12 python3.12-venv >/dev/null 2>&1; then
-      if grep -qi ubuntu /etc/os-release; then
-        dim "system: python3.12 not in this release's repositories, adding the deadsnakes PPA"
-        as_root apt-get install -y -qq software-properties-common >/dev/null
-        as_root add-apt-repository -y ppa:deadsnakes/ppa >/dev/null
-        as_root apt-get update -qq
-        as_root apt-get install -y -qq python3.12 python3.12-venv >/dev/null
-      else
-        red "Could not install Python 3.12. Install Python 3.11-3.13 with its venv package, then rerun."
-        exit 1
-      fi
+      dim "system: this release has no Python 3.11-3.13 package; the backend will use a uv-managed Python 3.12"
     fi
   fi
 
@@ -201,12 +193,36 @@ install_system_deps() {
   fi
 
   hash -r
-  py=$(find_python || true)
-  if [[ -z $py ]] || ! py_has_venv "$py" || ! node_ok; then
-    red "System packages still missing after install (python: ${py:-none}, node: $(node --version 2>/dev/null || echo none))."
+  if ! node_ok || ! command -v lsof >/dev/null 2>&1; then
+    red "System packages still missing after install (node: $(node --version 2>/dev/null || echo none))."
     exit 1
   fi
-  green "system: $py ($(py_version "$py")), node $(node --version) installed"
+  py=$(find_python || true)
+  green "system: python ${py:+$(py_version "$py")}${py:-via uv}, node $(node --version) installed"
+}
+
+# uv downloads a standalone Python into the user's home, for systems whose packages only offer
+# an unsupported version (e.g. 3.14). Nothing system-wide changes.
+find_uv() {
+  command -v uv 2>/dev/null || { [[ -x $HOME/.local/bin/uv ]] && echo "$HOME/.local/bin/uv"; }
+}
+
+make_venv() {
+  local venv=$1 py uv
+  py=$(find_python || true)
+  if [[ -n $py ]] && py_has_venv "$py"; then
+    echo "backend: creating virtualenv with $py ($(py_version "$py"))…"
+    "$py" -m venv "$venv"
+    return
+  fi
+  uv=$(find_uv || true)
+  if [[ -z $uv ]]; then
+    echo "backend: no Python 3.11-3.13 on this system, installing uv to ~/.local/bin…"
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null
+    uv=$(find_uv) || { red "Could not install uv. Install Python 3.12 with venv and rerun."; exit 1; }
+  fi
+  echo "backend: creating virtualenv with a uv-managed Python 3.12 (downloaded once)…"
+  "$uv" venv --quiet --seed --python 3.12 --python-preference only-managed "$venv"
 }
 
 setup() {
@@ -225,13 +241,12 @@ setup() {
     as_root chown -R "$(id -un)": "$ROOT"
   fi
 
-  py=$(find_python)
-  echo "backend: creating virtualenv with $py and installing requirements…"
   # Rebuild a .venv left without pip by a failed attempt, or made with an unsupported Python.
   if [[ ! -x $venv/bin/pip ]] || ! "$venv/bin/python" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] <= (3, 13))' 2>/dev/null; then
     rm -rf "$venv"
   fi
-  [[ -d $venv ]] || "$py" -m venv "$venv"
+  [[ -d $venv ]] || make_venv "$venv"
+  echo "backend: installing requirements…"
   "$venv/bin/pip" install -q --upgrade pip
   "$venv/bin/pip" install -q -r "$ROOT/backend/requirements.txt"
   if [[ ! -f $ROOT/backend/.env ]]; then
