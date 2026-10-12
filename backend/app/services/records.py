@@ -40,6 +40,7 @@ def clear_document_records(db: Session, doc_id: str) -> None:
 def delete_document(db: Session, doc: Document) -> None:
     clear_document_records(db, doc.id)
     db.delete(doc)
+    reconcile_medications(db, doc.patient_id)  # an older prescription of a drug may be the latest again
     db.commit()
     folder = get_settings().storage_dir / doc.id
     shutil.rmtree(folder, ignore_errors=True)
@@ -186,7 +187,12 @@ def reconcile_medications(db: Session, patient_id: str) -> None:
             key = m.generic.lower()
             latest[key] = max(latest.get(key, m.authored_on), m.authored_on)
     for m in rows:
-        if m.status == "active" and m.generic and m.authored_on and m.authored_on < latest[m.generic.lower()]:
-            m.status = "completed"
-            m.fhir_json = {**(m.fhir_json or {}), "status": "completed"}
+        if not (m.generic and m.authored_on):
+            continue
+        newest = m.authored_on >= latest[m.generic.lower()]
+        ended = m.frequency_code == "STAT" or medication_status(m.model_copy(update={"status": "active"})) == "completed"
+        status = "active" if newest and not ended else "completed"
+        if status != m.status:
+            m.status = status
+            m.fhir_json = {**(m.fhir_json or {}), "status": status}
             db.add(m)

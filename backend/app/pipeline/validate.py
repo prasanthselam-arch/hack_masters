@@ -33,6 +33,11 @@ from app.schemas.review import (
 
 REVIEW_THRESHOLD = 0.85
 _NUM = re.compile(r"^\s*([<>≤≥]=?|<=|>=)?\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*$")
+# a number followed only by a printed flag and/or unit: "12.5 L", "12.5 g/dL", "142 (H)", "6.8*"
+_NUM_TAIL = re.compile(r"^\s*([<>≤≥]=?|<=|>=)?\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(?:\(?\s*(?:hh|ll|h|l|high|low|\*+)\s*\)?)?\s*([a-zµ%][\w/%^.µ]*)?\s*$", re.I)
+_BAND = re.compile(r"([a-z][a-z \-/()]*?)\s*[:=]?\s*((?:<=|>=|≤|≥|<|>|up\s*to|upto|less than|below|more than|above|greater than)?\s*[-+]?\d+(?:\.\d+)?(?:\s*-\s*[-+]?\d+(?:\.\d+)?)?)")
+_NORMAL_BAND = re.compile(r"\b(normal|desirable|optimal|non[- ]?diabetic|sufficient|reference|healthy|adults?)\b")
+_SEX_BAND = {"female": re.compile(r"\b(female|women|f)\b"), "male": re.compile(r"\b(male|men|m)\b")}
 _POSITIVE = ("positive", "reactive", "detected", "present", "+ve", "seen")
 _NEGATIVE = ("negative", "non-reactive", "non reactive", "not detected", "absent", "nil", "-ve", "not seen")
 
@@ -47,7 +52,7 @@ def parse_number(text: str | None) -> tuple[float | None, str | None]:
     """'1,50,000' -> 150000; '<0.5' -> (0.5, '<'); 'Positive' -> (None, None)."""
     if text is None:
         return None, None
-    m = _NUM.match(str(text).replace(" ", ""))
+    m = _NUM.match(str(text).replace(" ", "")) or _NUM_TAIL.match(str(text))
     if not m:
         return None, None
     try:
@@ -56,11 +61,31 @@ def parse_number(text: str | None) -> tuple[float | None, str | None]:
         return None, None
 
 
-def parse_range(text: str | None) -> tuple[float | None, float | None]:
+def _range_text_norm(text: str) -> str:
+    t = text.lower().replace(",", "").replace("–", "-").replace("—", "-")
+    return re.sub(r"(\d)\s+to\s+(\d)", r"\1-\2", t)
+
+
+def range_bands(text: str | None) -> list[tuple[str, str]]:
+    """Labelled bands such as 'Desirable <200 Borderline 200-239' or 'Male 13-17 Female 12-15'."""
+    if not text:
+        return []
+    return [(label.strip(), expr) for label, expr in _BAND.findall(_range_text_norm(text)) if re.search(r"[a-z]{3,}|\b[mf]\b", label)]
+
+
+def parse_range(text: str | None, sex: str | None = None) -> tuple[float | None, float | None]:
     if not text:
         return None, None
-    t = text.lower().replace(",", "").replace("–", "-").replace("—", "-")
-    t = re.sub(r"(\d)\s+to\s+(\d)", r"\1-\2", t)
+    bands = range_bands(text)
+    if len(bands) >= 2:
+        # several bands: use the patient's sex, else the normal/desirable band; otherwise it is ambiguous
+        pick = next((e for lbl, e in bands if sex in _SEX_BAND and _SEX_BAND[sex].search(lbl)), None) \
+            or next((e for lbl, e in bands if _NORMAL_BAND.search(lbl)), None)
+        return _parse_range_expr(pick) if pick else (None, None)
+    return _parse_range_expr(_range_text_norm(text))
+
+
+def _parse_range_expr(t: str) -> tuple[float | None, float | None]:
     m = re.search(r"([-+]?\d+(?:\.\d+)?)\s*-\s*([-+]?\d+(?:\.\d+)?)", t)
     if m:
         lo, hi = float(m.group(1)), float(m.group(2))
@@ -79,7 +104,8 @@ def parse_date(iso: str | None, as_written: str | None, issues: list[Issue], pat
     parsed_written: date | None = None
     if as_written:
         try:
-            parsed_written = dateparser.parse(as_written, dayfirst=True, fuzzy=True, default=None).date()  # type: ignore[union-attr]
+            year_first = bool(re.match(r"\s*\d{4}[/.\-]", as_written))  # 2026-03-02 is ISO, not DD-MM
+            parsed_written = dateparser.parse(as_written, dayfirst=not year_first, yearfirst=year_first, fuzzy=True, default=None).date()  # type: ignore[union-attr]
         except (ValueError, OverflowError, AttributeError, TypeError):
             parsed_written = None
     parsed_iso: date | None = None
@@ -153,9 +179,11 @@ def _observation(t: ExtractedTest, sex: str | None, path: str) -> ReviewObservat
         conf = min(conf, 0.8)
 
     value_text = None if (num is not None and not comparator) else t.value_as_written
-    unit_orig = t.unit
-    ref_lo, ref_hi = parse_range(t.reference_range_as_written)
-    if ref_lo is None and ref_hi is None and (t.ref_low is not None or t.ref_high is not None) and t.reference_range_as_written:
+    tail = _NUM_TAIL.match(t.value_as_written or "")
+    unit_orig = t.unit or (tail.group(3) if tail and num is not None else None)
+    ref_lo, ref_hi = parse_range(t.reference_range_as_written, sex)
+    banded = len(range_bands(t.reference_range_as_written)) >= 2  # the model's copy may be the wrong band
+    if ref_lo is None and ref_hi is None and (t.ref_low is not None or t.ref_high is not None) and t.reference_range_as_written and not banded:
         ref_lo, ref_hi = t.ref_low, t.ref_high
     ref_source = "report" if (ref_lo is not None or ref_hi is not None) else None
 

@@ -18,9 +18,15 @@ const DOC_TYPES = ['prescription', 'lab_report', 'discharge_summary', 'imaging_r
 const MEALS = ['before_food', 'after_food', 'with_food', 'empty_stomach', 'bedtime']
 const newId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 12)
 const base = (): ReviewItem => ({ id: newId(), confidence: 1, needs_review: false, verified: 'single_pass', page: null, issues: [] })
+/** A plain number: "4.5", "4,5" (decimal comma), "1,50,000" or "150,000" (thousands). Anything else is text. */
 const num = (s: string): number | null => {
-  const v = parseFloat(s.replace(',', '.'))
-  return s.trim() === '' || Number.isNaN(v) ? null : v
+  const v = s.trim()
+  const n = /^[-+]?\d{1,3}(,\d{2,3})*,\d{3}(\.\d+)?$/.test(v)
+    ? Number(v.replace(/,/g, ''))
+    : /^[-+]?(\d+[.,]?\d*|[.,]\d+)$/.test(v)
+      ? Number(v.replace(',', '.'))
+      : NaN
+  return Number.isNaN(n) ? null : n
 }
 const small = 'h-8 px-2 py-1'
 
@@ -39,6 +45,39 @@ function DecimalInput({ value, onValue, ...props }: Omit<InputHTMLAttributes<HTM
       onChange={(e) => {
         setText(e.target.value)
         onValue(num(e.target.value))
+      }}
+      {...props}
+    />
+  )
+}
+
+/** A result value: numeric when it parses as a number, otherwise kept as text ("Positive", "<0.5"). */
+function ValueInput({
+  valueNum,
+  valueText,
+  onValue,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+  valueNum: number | null
+  valueText: string | null
+  onValue: (v: { value_num: number | null; value_text: string | null }) => void
+}) {
+  const shown = valueText ?? (valueNum !== null ? String(valueNum) : '')
+  const [text, setText] = useState(shown)
+  const [seen, setSeen] = useState(shown)
+  if (shown !== seen) {
+    setSeen(shown)
+    const n = num(text)
+    if (n !== null ? n !== valueNum || valueText !== null : (text || null) !== valueText) setText(shown)
+  }
+  return (
+    <Input
+      value={text}
+      onChange={(e) => {
+        const v = e.target.value
+        const n = num(v)
+        setText(v)
+        onValue(n !== null ? { value_num: n, value_text: null } : { value_num: null, value_text: v || null })
       }}
       {...props}
     />
@@ -367,15 +406,13 @@ export default function Review() {
                     </p>
                   </div>
                   <div>
-                    <Input
+                    <ValueInput
                       className={cn(small, 'font-semibold')}
                       placeholder={t('review.value')}
-                      value={o.value_text ?? (o.value_num !== null ? String(o.value_num) : '')}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        const n = /^\s*[-+]?\d*[.,]?\d+\s*$/.test(v) ? num(v) : null
-                        update('observations', o.id, n !== null ? { value_num: n, value_text: null } : { value_num: null, value_text: v || null })
-                      }}
+                      aria-label={t('review.value')}
+                      valueNum={o.value_num}
+                      valueText={o.value_text}
+                      onValue={(v) => update('observations', o.id, v)}
                     />
                     {o.value_original && o.value_original !== String(o.value_num) && <p className="mt-1 truncate text-xs text-slate-500">“{o.value_original}”</p>}
                   </div>

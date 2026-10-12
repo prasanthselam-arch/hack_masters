@@ -139,3 +139,35 @@ def test_verifier_rewording_is_not_treated_as_new_item():
     assert [o.verified for o in p.observations] == ["agreed", "agreed", "added"]
     assert p.medications[0].verified == "agreed"
     assert p.conditions[0].verified == "agreed"
+
+
+def test_values_printed_with_a_flag_or_unit_keep_their_number():
+    assert parse_number("12.5 L") == (12.5, None)
+    assert parse_number("12.5 g/dL") == (12.5, None)
+    assert parse_number("142 (H)") == (142.0, None)
+    assert parse_number("2-3 /hpf") == (None, None)
+    assert parse_number("120/80") == (None, None)
+
+
+def test_banded_and_sex_specific_ranges_pick_the_right_band():
+    assert parse_range("Desirable <200 Borderline 200-239 High >=240") == (None, 200.0)
+    assert parse_range("Normal <100 Prediabetes 100-125 Diabetes >=126") == (None, 100.0)
+    assert parse_range("Deficient <20 Insufficient 20-30 Sufficient 30-100") == (30.0, 100.0)
+    assert parse_range("Male 13-17 Female 12-15", "female") == (12.0, 15.0)
+    assert parse_range("Male: 13-17 g/dL, Female: 12-15 g/dL", "male") == (13.0, 17.0)
+    assert parse_range("Male 13-17 Female 12-15") == (None, None)
+    assert parse_range("4.0 - 11.0 x10^3/uL") == (4.0, 11.0)
+
+
+def test_banded_ranges_do_not_flag_normal_results_low():
+    obs = build_review(_doc(tests=[_test("Total Cholesterol", "180", "mg/dL", "Desirable <200 Borderline 200-239")]), None, "male").observations[0]
+    assert obs.interpretation == "N"
+    hb = build_review(_doc(tests=[_test("Hemoglobin", "12.8", "g/dL", "Male 13-17 Female 12-15")], gender="female"), None, "female").observations[0]
+    assert hb.interpretation == "N"
+
+
+def test_iso_style_written_dates_are_not_read_day_first():
+    issues = []
+    assert parse_date("2026-03-02", "2026-03-02", issues, "d") == "2026-03-02"
+    assert not issues
+    assert parse_date("2026-02-03", "03/02/2026", [], "d") == "2026-02-03"

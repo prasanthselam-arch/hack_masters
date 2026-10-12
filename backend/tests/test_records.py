@@ -76,3 +76,16 @@ def test_bound_only_results_are_not_flagged_after_review_edits():
     bound, plain = refresh_review(payload, "male").observations
     assert bound.interpretation is None
     assert plain.interpretation == "H"
+
+
+def test_deleting_the_newer_prescription_reactivates_the_older_one(db):
+    p = Patient(name="Asha")
+    db.add(p)
+    db.commit()
+    old, new = date.today() - timedelta(days=200), date.today() - timedelta(days=10)
+    _confirm(db, p, old, [("Glycomet", "Metformin")])
+    _confirm(db, p, new, [("Glyciphage", "Metformin")])
+    assert _active(db, p) == [("Metformin", new)]
+    newer = db.exec(select(Document).where(Document.patient_id == p.id)).all()
+    records.delete_document(db, next(d for d in newer if d.document_date == new))
+    assert _active(db, p) == [("Metformin", old)]

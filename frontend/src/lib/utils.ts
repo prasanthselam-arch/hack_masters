@@ -19,7 +19,8 @@ export function fmtDate(iso: string | null | undefined, lang: Lang = 'en', opts?
 export function fmtNum(v: number | string | null | undefined) {
   if (v === null || v === undefined) return '—'
   if (typeof v === 'string') return v
-  return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(2)))
+  if (Number.isInteger(v)) return String(v)
+  return String(Number(Math.abs(v) < 1 ? v.toPrecision(3) : v.toFixed(2))) // keep 0.004, not 0
 }
 
 export function rangeText(lo: number | null, hi: number | null) {

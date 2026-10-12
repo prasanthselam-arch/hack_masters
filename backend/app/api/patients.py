@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date
+from datetime import date, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -226,7 +226,7 @@ def timeline(p: Patient = Depends(patient_or_404), db: Session = Depends(get_ses
         o = by_doc_obs.get(d.id, [])
         e = by_doc_enc.get(d.id)
         events.append({
-            "id": d.id, "date": d.document_date or (d.created_at.date() if d.created_at else None),
+            "id": d.id, "date": d.document_date or (d.created_at.replace(tzinfo=timezone.utc).astimezone(mapper.IST).date() if d.created_at else None),
             "date_known": d.document_date is not None,
             "type": d.doc_type or "other", "title": d.title or d.filename, "status": d.status, "source": d.source,
             "facility": d.facility, "author": d.author, "languages": d.languages, "handwritten": d.handwritten,

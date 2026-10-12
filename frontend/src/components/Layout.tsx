@@ -123,6 +123,50 @@ function PatientSwitcher() {
   )
 }
 
+/** Profile switcher for screens without the sidebar. */
+function MobilePatientBar() {
+  const { t } = useTranslation()
+  const { patients, patient, select } = usePatient()
+  if (!patient) return null
+  const index = patients.findIndex((p) => p.id === patient.id)
+  return (
+    <div className="flex items-center gap-2 px-4 pb-2.5">
+      <div className="relative flex min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-white/80 px-2.5 py-1.5 ring-1 ring-slate-900/[0.07]">
+        <Avatar name={patient.name} index={index} className="h-7 w-7 text-[11px]" />
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-sm font-semibold text-slate-900">{patient.name}</p>
+          {patient.relationship && <p className="truncate text-[11px] text-slate-500">{t(`relationship.${patient.relationship}`)}</p>}
+        </div>
+        {patients.length > 1 && (
+          <>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
+            <select
+              aria-label={t('profiles.family')}
+              value={patient.id}
+              onChange={(e) => select(e.target.value)}
+              className="absolute inset-0 cursor-pointer opacity-0"
+            >
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.relationship ? `${p.name} · ${t(`relationship.${p.relationship}`)}` : p.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
+      <Link
+        to="/profiles"
+        title={t('profiles.manage')}
+        className="flex shrink-0 items-center gap-1.5 rounded-xl bg-white/80 px-3 py-2.5 text-xs font-medium text-slate-700 ring-1 ring-slate-900/[0.07] hover:text-brand-700"
+      >
+        <Users className="h-4 w-4" />
+        <span className="hidden sm:inline">{t('profiles.manage')}</span>
+      </Link>
+    </div>
+  )
+}
+
 function AccountBar() {
   const { t } = useTranslation()
   const { account, signOut } = useAuth()
@@ -213,17 +257,15 @@ export function Layout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-slate-900/[0.06] bg-white/75 backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <Brand />
+            <Brand compact />
             <div className="flex items-center gap-1">
-              <LanguageSwitcher className="w-36" />
-              <Link to="/profiles/new" title={t('profile.add')} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
-                <UserPlus className="h-4 w-4" />
-              </Link>
+              <LanguageSwitcher className="w-28 sm:w-36" />
               <button onClick={signOut} title={t('auth.sign_out')} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
           </div>
+          <MobilePatientBar />
           <nav className="scrollbar-thin flex gap-1 overflow-x-auto px-3 pb-2.5">
             {NAV.map(({ to, key, icon: Icon }) => (
               <NavLink
@@ -293,7 +335,7 @@ export function Logo({ className }: { className?: string }) {
   )
 }
 
-export function Brand({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
+export function Brand({ tone = 'light', compact = false }: { tone?: 'light' | 'dark'; compact?: boolean }) {
   const { t } = useTranslation()
   const dark = tone === 'dark'
   return (
@@ -301,7 +343,7 @@ export function Brand({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       <Logo />
       <div className="leading-tight">
         <p className={cn('font-display text-[1.05rem] font-bold', dark ? 'text-white' : 'text-slate-900')}>{t('app.name')}</p>
-        <p className={cn('text-xs', dark ? 'text-slate-400' : 'text-slate-500')}>{t('app.tagline')}</p>
+        <p className={cn('text-xs', dark ? 'text-slate-400' : 'text-slate-500', compact && 'hidden sm:block')}>{t('app.tagline')}</p>
       </div>
     </Link>
   )
