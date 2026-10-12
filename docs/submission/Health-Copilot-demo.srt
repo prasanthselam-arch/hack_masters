@@ -1,0 +1,199 @@
+1
+00:00:00,400 --> 00:00:04,357
+Hi, we're team hack masters, and this is Health Copilot:
+
+2
+00:00:04,407 --> 00:00:08,508
+an AI-powered personal health copilot for Indian families.
+
+3
+00:00:08,558 --> 00:00:17,310
+It reads your medical paperwork twice, checks it with code, lets you confirm it, and then explains it in your own language.
+
+4
+00:00:18,370 --> 00:00:22,202
+Indian patients carry their health history on paper:
+
+5
+00:00:22,252 --> 00:00:31,460
+handwritten prescriptions, lab printouts and discharge summaries, often mixing English with Hindi, Telugu, Tamil or Kannada.
+
+6
+00:00:31,510 --> 00:00:37,283
+Nobody explains the abnormal values, and records don't move between hospitals.
+
+7
+00:00:37,333 --> 00:00:42,360
+ABDM can carry them, but only as structured FHIR, linked to an ABHA.
+
+8
+00:00:43,410 --> 00:00:44,797
+Let's see it live.
+
+9
+00:00:44,847 --> 00:00:50,064
+You sign in with your email or your mobile number, and a password.
+
+10
+00:00:50,114 --> 00:00:55,810
+One account holds a whole family, and it only ever sees its own records.
+
+11
+00:00:56,880 --> 00:01:00,002
+The dashboard brings every document together:
+
+12
+00:01:00,052 --> 00:01:04,442
+results that need attention, today's medicines, and conditions.
+
+13
+00:01:04,492 --> 00:01:11,420
+The High and Low flags are computed in code from the report's own reference range, never by the AI.
+
+14
+00:01:12,480 --> 00:01:16,665
+Now let's upload a photo of a bilingual Telugu prescription.
+
+15
+00:01:16,715 --> 00:01:24,782
+The pipeline deskews and enhances the page, classifies it, and extracts it with Gemini vision into a strict schema.
+
+16
+00:01:24,832 --> 00:01:33,040
+Every value is checked in code, and then a different model re-reads the page, focusing on whatever looked suspicious.
+
+17
+00:01:33,090 --> 00:01:36,640
+An upload can even be deleted before it's reviewed.
+
+18
+00:01:37,690 --> 00:01:43,268
+While that runs, here's the review screen for a handwritten prescription photo.
+
+19
+00:01:43,318 --> 00:01:50,890
+The original page sits next to every extracted field, with its confidence, and whether both AI reads agree.
+
+20
+00:01:50,940 --> 00:01:54,523
+This card shows what the verification read changed:
+
+21
+00:01:54,573 --> 00:02:00,863
+it caught the full brand name, Uprise D3 60K, and removed codes that weren't on the page.
+
+22
+00:02:00,913 --> 00:02:04,710
+Nothing reaches the record until a person confirms it.
+
+23
+00:02:05,760 --> 00:02:08,315
+Our Telugu prescription is ready.
+
+24
+00:02:08,365 --> 00:02:14,630
+A quick check, then one tap on Confirm and save, and it joins the family record.
+
+25
+00:02:15,690 --> 00:02:22,275
+Trends plot every result across the year, with the reference range shaded.
+
+26
+00:02:22,325 --> 00:02:25,861
+HbA1c came down from 8.1 to 7.6 percent:
+
+27
+00:02:25,911 --> 00:02:28,910
+better, but still above the range.
+
+28
+00:02:29,960 --> 00:02:34,978
+Every document gets a plain-language explanation, here in Hindi.
+
+29
+00:02:35,028 --> 00:02:37,275
+The AI writes only the prose.
+
+30
+00:02:37,325 --> 00:02:46,540
+Each number, flag and schedule is attached from the database, and a safety filter blocks dosing advice and diagnoses.
+
+31
+00:02:47,590 --> 00:02:52,974
+Ask Copilot answers questions from your own records only, with citations.
+
+32
+00:02:53,024 --> 00:02:59,300
+Here I'm asking in Telugu about my sugar and cholesterol, and which medicines I take.
+
+33
+00:02:59,350 --> 00:03:07,190
+The answer comes back in Telugu, with the results and medicines it used, and it can read the answer aloud.
+
+34
+00:03:12,790 --> 00:03:14,366
+It's ready for ABDM.
+
+35
+00:03:14,416 --> 00:03:21,440
+Link an ABHA with a one-time password, grant consent, and pull records from a hospital.
+
+36
+00:03:21,490 --> 00:03:30,710
+Every confirmed document becomes an NRCeS-profile FHIR R4 bundle, readable here, with the raw JSON one click away.
+
+37
+00:03:31,760 --> 00:03:33,609
+And it's built for phones:
+
+38
+00:03:33,659 --> 00:03:40,694
+a bottom tab bar, the account menu in the corner, and it installs to the home screen like an app.
+
+39
+00:03:40,744 --> 00:03:43,250
+Everything works in five languages.
+
+40
+00:03:44,300 --> 00:03:45,435
+Under the hood:
+
+41
+00:03:45,485 --> 00:03:53,337
+FastAPI on the back end, React 19 on the front end, and Gemini model chains with automatic fallback.
+
+42
+00:03:53,387 --> 00:03:55,708
+And it all runs on free tiers:
+
+43
+00:03:55,758 --> 00:04:03,610
+Render, a private GitHub repository as the datastore, Gmail through Apps Script, and GitHub Actions.
+
+44
+00:04:04,670 --> 00:04:08,046
+We measured accuracy instead of claiming it.
+
+45
+00:04:08,096 --> 00:04:19,570
+On ten test documents, including handwriting, phone photos and four Indian scripts, the pipeline with verification got all 477 checked fields right.
+
+46
+00:04:20,640 --> 00:04:23,230
+AI reads and explains.
+
+47
+00:04:23,280 --> 00:04:24,670
+Code checks.
+
+48
+00:04:24,720 --> 00:04:26,110
+You confirm.
+
+49
+00:04:26,160 --> 00:04:31,630
+Your record, in your language, ready for ABDM.
+
+50
+00:04:31,680 --> 00:04:32,830
+Thank you!
