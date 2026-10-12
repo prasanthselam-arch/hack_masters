@@ -9,7 +9,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
-    autoDeploy: true
+    autoDeployTrigger: checksPass  # deploy pushes to main once the GitHub Actions checks pass
     envVars:
       - key: GEMINI_API_KEY
         sync: false
