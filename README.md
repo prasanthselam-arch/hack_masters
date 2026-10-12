@@ -126,6 +126,38 @@ If HTTPS calls fail with certificate errors, for example behind Zscaler:
 - **Backend:** point `CA_BUNDLE` in `backend/.env` at a PEM file that contains the system CAs plus the proxy's root CA.
 - **npm:** set `NODE_EXTRA_CA_CERTS=/path/to/proxy-root.pem`.
 
+## Deploy to Render (free)
+
+Everything runs on free plans: a Render free web service, plus a **private GitHub repository** that keeps the
+accounts, health records and uploaded files. A free Render service has no persistent disk: it forgets everything when
+it restarts, redeploys or sleeps after 15 minutes without traffic. So at start-up the app restores its SQLite database
+and files from that repository, and pushes a snapshot back about a minute after anything changes and again when it
+shuts down. Each day keeps one commit, so the repository also gives you a daily history.
+
+1. **Create the data repository.** On GitHub, create a new **private**, empty repository, for example
+   `your-name/health-copilot-data` (no README or licence).
+2. **Create a token for it.** In GitHub **Settings → Developer settings → Personal access tokens → Fine-grained
+   tokens**, generate a token with **Repository access: Only select repositories** (pick the data repository) and
+   **Permissions → Contents: Read and write**. Choose an expiry date and put a reminder in your calendar to renew it.
+3. **Create the service.** In Render, choose **New → Blueprint**, connect this GitHub repository and pick the
+   `main` branch. Render reads `render.yaml` and asks for:
+   - `GEMINI_API_KEY`: your Gemini API key;
+   - `DATA_REPO`: the data repository as `owner/name`, for example `your-name/health-copilot-data`;
+   - `DATA_REPO_TOKEN`: the token from step 2.
+4. **Deploy.** The first build takes a few minutes. The site is then at `https://health-copilot-<id>.onrender.com`,
+   and every push to `main` redeploys it.
+
+Good to know:
+
+- The token is passed to git through environment variables only. It is never written to a URL, a file or the logs.
+- If the data repository can't be read at start-up (wrong name, expired token), the app still starts but stops
+  syncing, so an empty instance can never overwrite your data. The Render logs say so; fix the variable and redeploy.
+- The first visit after the service has slept takes about a minute while Render starts it again.
+- A change made in the last minute before a crash (not a normal stop) can be lost. Normal stops, redeploys and sleep
+  always push a final snapshot.
+- Keep the data repository private: it contains everyone's health records.
+- GitHub warns about repositories over 1 GB and rejects files over 100 MB, which is far beyond a demo's needs.
+
 ## Configuration (`backend/.env`)
 
 | Variable | Default | Notes |
@@ -138,6 +170,10 @@ If HTTPS calls fail with certificate errors, for example behind Zscaler:
 | `CA_BUNDLE` | — | Custom CA bundle for TLS-inspecting proxies |
 | `SESSION_DAYS` | `30` | How long a sign-in lasts |
 | `COOKIE_SECURE` | `false` | Set `true` when served over HTTPS |
+| `STATIC_DIR` | — | Folder with the built frontend; the API then serves the website too (set in the `Dockerfile`) |
+| `DATA_REPO` / `DATA_REPO_TOKEN` | — | Private GitHub repository (`owner/name`) and fine-grained token that keep the data; see [Deploy to Render](#deploy-to-render-free) |
+| `DATA_REPO_BRANCH` | `main` | Branch for the data snapshots |
+| `DATA_SYNC_SECONDS` | `60` | How often to check for changes to push |
 
 The **Gemini free tier allows only about 20 requests per model per day**. One document uses 3 requests (classify,
 extract, verify), and each summary or chat answer uses one or two more. For demos and evaluation runs, use a key with
@@ -146,7 +182,7 @@ billing enabled.
 ## Tests and evaluation
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q        # 60 unit tests: validators, knowledge base, FHIR, ABHA, safety, records
+cd backend && .venv/bin/python -m pytest -q        # 85 unit tests: validators, knowledge base, FHIR, ABHA, safety, records, data sync
 backend/.venv/bin/python eval/make_samples.py      # regenerate the 10 synthetic documents + ground truth (deterministic)
 backend/.venv/bin/python eval/run_eval.py         # run the pipeline on all samples and write eval/report.md (about 30 LLM calls)
 backend/.venv/bin/python eval/run_eval.py --rescore eval/runs/<run>   # re-score saved outputs without LLM calls

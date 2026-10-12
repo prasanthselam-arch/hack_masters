@@ -1,14 +1,17 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, documents, insights, patients, voice
 from app.config import get_settings
 from app.db import init_db
 from app.knowledge import drugs, icd10, labs
 from app.pipeline import runner
+from app.services import datastore
 from app.services.safety import DISCLAIMER, LANGUAGES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -18,9 +21,12 @@ for noisy in ("httpx", "google_genai"):
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    datastore.restore()
     init_db()
     runner.resume_pending()
+    datastore.start()
     yield
+    datastore.stop()
 
 
 app = FastAPI(title="Personal Health Copilot API", version="1.0.0", lifespan=lifespan)
@@ -49,3 +55,19 @@ def health():
 @app.get("/api/meta/disclaimer")
 def disclaimer():
     return DISCLAIMER
+
+
+# Production: serve the built frontend from the same origin as the API (one service, same-site cookies).
+_static = get_settings().static_dir
+if _static and (_static / "index.html").is_file():
+    _root = _static.resolve()
+    app.mount("/assets", StaticFiles(directory=_root / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str):
+        if path.startswith("api/"):
+            raise HTTPException(404, "Not found")
+        f = (_root / path).resolve()
+        if path and f.is_file() and f.is_relative_to(_root):
+            return FileResponse(f)
+        return FileResponse(_root / "index.html", headers={"Cache-Control": "no-cache"})

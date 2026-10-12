@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     cookie_secure: bool = False  # set true when served over HTTPS
     demo_otp: str = "123456"
 
+    # Hosting: the built frontend served by FastAPI, and a private GitHub repository ("owner/name") that keeps
+    # the database and uploads across restarts on hosts without a persistent disk (see services/datastore.py).
+    static_dir: Path | None = None
+    data_repo: str = ""
+    data_repo_token: str = ""
+    data_repo_branch: str = "main"
+    data_repo_dir: Path = BACKEND_DIR / ".data-repo"
+    data_sync_seconds: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

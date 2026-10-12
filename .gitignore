@@ -11,6 +11,7 @@ __pycache__/
 
 # Runtime data
 backend/data/
+backend/.data-repo/
 *.db
 *.sqlite3
 

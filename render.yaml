@@ -1,0 +1,25 @@
+# Render Blueprint: free web service built from this repository's Dockerfile.
+# Secrets marked "sync: false" are asked for once when the Blueprint is created; they are never stored here.
+services:
+  - type: web
+    name: health-copilot
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATA_REPO
+        sync: false
+      - key: DATA_REPO_TOKEN
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: WORKER_THREADS
+        value: "1"
+      - key: DATA_SYNC_SECONDS
+        value: "60"
