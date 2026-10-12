@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from './components/Layout'
 import { ErrorNote, Spinner } from './components/ui'
-import { usePatient } from './lib/patient'
+import { useAuth } from './lib/auth'
+import { PatientProvider, usePatient } from './lib/patient'
+import AuthPage from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import Onboarding from './pages/Onboarding'
 
@@ -18,6 +20,25 @@ const Abha = lazy(() => import('./pages/Abha'))
 
 export default function App() {
   const { t } = useTranslation()
+  const { account, loading, error } = useAuth()
+
+  if (loading) return <Spinner className="h-full" label={t('common.loading')} />
+  if (error)
+    return (
+      <div className="mx-auto max-w-lg p-8">
+        <ErrorNote error={error} onRetry={() => location.reload()} />
+      </div>
+    )
+  if (!account) return <AuthPage />
+  return (
+    <PatientProvider key={account.id}>
+      <SignedInApp />
+    </PatientProvider>
+  )
+}
+
+function SignedInApp() {
+  const { t } = useTranslation()
   const { patient, loading, error } = usePatient()
 
   if (loading) return <Spinner className="h-full" label={t('common.loading')} />
@@ -31,7 +52,7 @@ export default function App() {
 
   return (
     <Routes>
-        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/profiles/new" element={<Onboarding addMember />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="upload" element={<UploadPage />} />

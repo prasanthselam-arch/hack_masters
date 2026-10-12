@@ -1,8 +1,9 @@
-import { Activity, CalendarClock, HeartPulse, Languages, LayoutDashboard, LineChart, MessageCircleHeart, Pill, ShieldCheck, Upload } from 'lucide-react'
+import { Activity, CalendarClock, HeartPulse, Languages, LayoutDashboard, LineChart, LogOut, MessageCircleHeart, Pill, ShieldCheck, Upload, UserPlus } from 'lucide-react'
 import { Suspense } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LANGUAGES } from '@/i18n'
+import { useAuth } from '@/lib/auth'
 import { useLang, usePatient } from '@/lib/patient'
 import { cn } from '@/lib/utils'
 import { Disclaimer } from './medical'
@@ -82,7 +83,31 @@ function PatientSwitcher() {
   )
 }
 
+function AccountBar() {
+  const { t } = useTranslation()
+  const { account, signOut } = useAuth()
+  if (!account) return null
+  return (
+    <div className="flex items-center justify-between gap-2 px-1">
+      <p className="min-w-0 truncate text-xs text-slate-500" title={account.login}>
+        {t('auth.signed_in_as')} <span className="font-medium text-slate-700">{account.name}</span>
+      </p>
+      <div className="flex shrink-0 gap-1">
+        <Link to="/profiles/new" title={t('profile.add')} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-700">
+          <UserPlus className="h-4 w-4" />
+          <span className="sr-only">{t('profile.add')}</span>
+        </Link>
+        <button onClick={signOut} title={t('auth.sign_out')} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600">
+          <LogOut className="h-4 w-4" />
+          <span className="sr-only">{t('auth.sign_out')}</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function Layout() {
+  const { signOut } = useAuth()
   const { t } = useTranslation()
   return (
     <div className="flex min-h-full">
@@ -109,6 +134,7 @@ export function Layout() {
         <div className="space-y-3">
           <LanguageSwitcher />
           <PatientSwitcher />
+          <AccountBar />
         </div>
       </aside>
 
@@ -116,7 +142,15 @@ export function Layout() {
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <Brand />
-            <LanguageSwitcher className="w-40" />
+            <div className="flex items-center gap-1">
+              <LanguageSwitcher className="w-40" />
+              <Link to="/profiles/new" title={t('profile.add')} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                <UserPlus className="h-4 w-4" />
+              </Link>
+              <button onClick={signOut} title={t('auth.sign_out')} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <nav className="scrollbar-thin flex gap-1 overflow-x-auto px-3 pb-2">
             {NAV.map(({ to, key, icon: Icon }) => (

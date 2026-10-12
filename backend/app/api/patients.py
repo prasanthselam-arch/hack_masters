@@ -7,13 +7,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app.api.deps import patient_or_404
+from app.api.deps import current_account, patient_or_404
 from app.db import get_session
 from app.fhir import mapper
 from app.fhir.bundle import patient_bundle
 from app.knowledge import labs
-from app.models.tables import Condition, Document, Encounter, MedicationRequest, Observation, Patient, Summary
-from app.services.records import delete_document
+from app.models.tables import Account, Condition, Document, Encounter, MedicationRequest, Observation, Patient
+from app.services.records import delete_patient as delete_patient_data
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
@@ -39,13 +39,14 @@ def _patient_out(p: Patient) -> dict[str, Any]:
 
 
 @router.get("")
-def list_patients(db: Session = Depends(get_session)):
-    return [_patient_out(p) for p in db.exec(select(Patient).order_by(Patient.created_at)).all()]
+def list_patients(acc: Account = Depends(current_account), db: Session = Depends(get_session)):
+    rows = db.exec(select(Patient).where(Patient.owner_id == acc.id).order_by(Patient.created_at)).all()
+    return [_patient_out(p) for p in rows]
 
 
 @router.post("")
-def create_patient(body: PatientIn, db: Session = Depends(get_session)):
-    p = Patient(**body.model_dump())
+def create_patient(body: PatientIn, acc: Account = Depends(current_account), db: Session = Depends(get_session)):
+    p = Patient(**body.model_dump(), owner_id=acc.id)
     p.fhir_json = mapper.patient_resource(p)
     db.add(p)
     db.commit()
@@ -71,12 +72,7 @@ def update_patient(body: PatientPatch, p: Patient = Depends(patient_or_404), db:
 
 @router.delete("/{patient_id}")
 def delete_patient(p: Patient = Depends(patient_or_404), db: Session = Depends(get_session)):
-    for d in db.exec(select(Document).where(Document.patient_id == p.id)).all():
-        delete_document(db, d)
-    for s in db.exec(select(Summary).where(Summary.patient_id == p.id)).all():
-        db.delete(s)
-    db.delete(p)
-    db.commit()
+    delete_patient_data(db, p)
     return {"deleted": True}
 
 

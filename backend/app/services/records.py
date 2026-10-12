@@ -1,10 +1,12 @@
 """Persist a user-confirmed ReviewPayload into FHIR-shaped tables."""
 
 import logging
+import shutil
 from datetime import date, datetime, timedelta, timezone
 
 from sqlmodel import Session, delete, select
 
+from app.config import get_settings
 from app.fhir import mapper
 from app.models.tables import (
     Condition,
@@ -36,6 +38,17 @@ def clear_document_records(db: Session, doc_id: str) -> None:
 def delete_document(db: Session, doc: Document) -> None:
     clear_document_records(db, doc.id)
     db.delete(doc)
+    db.commit()
+    shutil.rmtree(get_settings().storage_dir / doc.id, ignore_errors=True)
+
+
+def delete_patient(db: Session, patient: Patient) -> None:
+    """Remove a profile with all its documents, uploaded files, clinical records and summaries."""
+    for d in db.exec(select(Document).where(Document.patient_id == patient.id)).all():
+        delete_document(db, d)
+    for s in db.exec(select(Summary).where(Summary.patient_id == patient.id)).all():
+        db.delete(s)
+    db.delete(patient)
     db.commit()
 
 

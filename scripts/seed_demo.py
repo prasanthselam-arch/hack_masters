@@ -1,11 +1,12 @@
-"""Create a demo patient through the API (backend must be running).
+"""Create a demo account and patient through the API (backend must be running).
 
-    backend/.venv/bin/python scripts/seed_demo.py                       # patient + ABHA link + 4 mock-HIP records (no LLM calls)
+    backend/.venv/bin/python scripts/seed_demo.py                       # account + patient + ABHA link + 4 mock-HIP records (no LLM calls)
     backend/.venv/bin/python scripts/seed_demo.py --confirm lab_diabetes_lipid_pdf,rx_handwritten_diabetes \
                                                   --review rx_handwritten_photo   # also upload samples (uses the LLM)
 
 Documents passed to --confirm are uploaded and confirmed as extracted; --review ones are left waiting
-on the review screen for a live demo.
+on the review screen for a live demo. The script signs in to --login (creating the account if needed);
+sign in to the web app with the same login and password to see the data.
 """
 
 import argparse
@@ -35,15 +36,27 @@ def wait(c: httpx.Client, did: str) -> dict:
     raise TimeoutError(did)
 
 
+def sign_in(c: httpx.Client, login: str, password: str, name: str) -> None:
+    r = c.post("/api/auth/login", json={"login": login, "password": password})
+    if r.status_code == 401:
+        r = c.post("/api/auth/register", json={"name": name, "login": login, "password": password})
+    if r.status_code != 200:
+        sys.exit(f"could not sign in as {login}: {r.text}")
+    print(f"signed in as {login}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--api", default="http://127.0.0.1:8000")
+    ap.add_argument("--login", default="demo@healthcopilot.in")
+    ap.add_argument("--password", default="demo12345")
     ap.add_argument("--name", default="Ramesh Kumar")
     ap.add_argument("--abha", default="ramesh.kumar@abdm")
     ap.add_argument("--confirm", default="", help="comma-separated sample ids to upload and confirm")
     ap.add_argument("--review", default="", help="comma-separated sample ids to upload and leave in review")
     args = ap.parse_args()
     c = httpx.Client(base_url=args.api, timeout=180)
+    sign_in(c, args.login, args.password, args.name)
 
     p = c.post("/api/patients", json={"name": args.name, "gender": "male", "birth_date": "1968-04-12",
                                       "phone": "9876543210", "preferred_language": "en"}).json()

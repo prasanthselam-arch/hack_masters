@@ -234,10 +234,15 @@ verified pipeline got 100% of 477 field checks right; the single pass got 99.8%.
 ## Security and privacy
 
 - API keys live only in `backend/.env`, which is gitignored. `.env.example` documents the variables.
+- **Accounts.** Users sign up with an email or mobile number and a password (scrypt hash). Sign-in sets an opaque
+  session token in an HttpOnly, SameSite=Lax cookie; only its SHA-256 hash is stored. A cookie rather than a header
+  is used so that page images and file downloads are authorised too. Every patient and document route resolves the
+  resource through an ownership check, and another account's records return 404, so IDs reveal nothing. Five wrong
+  passwords in 15 minutes lock that login for a while.
 - The pipeline log records stages, timings, models and token counts, not document content.
 - Records stay in the local database and file store. What goes to the model provider:
   - For extraction, the page images and any PDF text layer, which may include the name printed on the document.
   - For summaries and chat, fact sheets that carry only gender, age and clinical facts. No name, phone number or
     ABHA identifier is included.
 - For production, use a provider region and data-processing agreement that meet the requirements of India's Digital
-  Personal Data Protection (DPDP) Act, and add authentication. This prototype is single-user.
+  Personal Data Protection (DPDP) Act, serve over HTTPS with `COOKIE_SECURE=true`, and add encryption at rest.

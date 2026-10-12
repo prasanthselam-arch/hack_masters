@@ -1,4 +1,5 @@
 import type {
+  Account,
   ChatReply,
   DocumentInfo,
   Health,
@@ -21,8 +22,12 @@ export class ApiError extends Error {
   }
 }
 
+/** Fired when the session has expired or was revoked, so the app can return to the sign-in screen. */
+export const UNAUTHORIZED_EVENT = 'hc:unauthorized'
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
+  if (res.status === 401 && !path.startsWith('/api/auth/')) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
   if (!res.ok) {
     let msg = res.statusText
     try {
@@ -44,6 +49,10 @@ const json = (method: string, body?: unknown): RequestInit => ({
 
 export const api = {
   health: () => request<Health>('/api/health'),
+  me: () => request<Account>('/api/auth/me'),
+  register: (body: { name: string; login: string; password: string }) => request<Account>('/api/auth/register', json('POST', body)),
+  login: (body: { login: string; password: string }) => request<Account>('/api/auth/login', json('POST', body)),
+  logout: () => request<{ signed_out: boolean }>('/api/auth/logout', json('POST')),
   patients: () => request<Patient[]>('/api/patients'),
   createPatient: (body: Partial<Patient>) => request<Patient>('/api/patients', json('POST', body)),
   updatePatient: (id: string, body: Partial<Patient>) => request<Patient>(`/api/patients/${id}`, json('PATCH', body)),

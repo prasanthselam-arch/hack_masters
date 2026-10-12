@@ -311,5 +311,29 @@
     "export_btn": "Download FHIR bundle",
     "unlink": "Unlink",
     "imported_one": "1 record imported"
+  },
+  "auth": {
+    "sign_in": "Sign in",
+    "sign_up": "Create account",
+    "welcome": "Welcome back",
+    "welcome_sub": "Sign in to see your health records.",
+    "create_title": "Create your account",
+    "create_sub": "Your records are private to your account.",
+    "name": "Your name",
+    "login": "Email or mobile number",
+    "login_hint": "e.g. asha@example.com or 98765 43210",
+    "password": "Password",
+    "password_hint": "At least 8 characters",
+    "no_account": "New here?",
+    "have_account": "Already have an account?",
+    "sign_out": "Sign out",
+    "private_note": "Only you can see the records in your account.",
+    "signed_in_as": "Signed in as",
+    "hero_title": "All your health records, explained simply"
+  },
+  "profile": {
+    "add": "Add family member",
+    "add_title": "Add a family member",
+    "add_sub": "Keep a separate health record for a parent, child or spouse in your account."
   }
 }

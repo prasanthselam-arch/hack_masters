@@ -71,15 +71,32 @@ Or use the control script, which runs both servers in the background with logs i
 HOST=0.0.0.0 ./run.sh start    # open from a phone on the same Wi-Fi (camera upload)
 ```
 
-To load a demo patient with an ABHA link and a year of records (no LLM calls needed):
+### Accounts
+
+Anyone can create an account with an email address or a 10-digit mobile number and a password. Each account sees
+only its own profiles and documents, and can hold several profiles, for example parents or children. Requests for
+another account's records return 404. Sessions use an HttpOnly cookie (30 days), passwords are stored as scrypt
+hashes, and repeated wrong passwords are throttled.
+
+To load a demo account (`demo@healthcopilot.in`, password `demo12345`) with a patient, an ABHA link and a year of
+records (no LLM calls needed):
 
 ```bash
 backend/.venv/bin/python scripts/seed_demo.py
 # optionally also run real documents through the pipeline:
 backend/.venv/bin/python scripts/seed_demo.py --confirm lab_diabetes_lipid_pdf,rx_handwritten_diabetes --review rx_handwritten_photo
+# use your own account instead:
+backend/.venv/bin/python scripts/seed_demo.py --login you@example.com --password '...'
 ```
 
 The demo ABHA OTP is `123456`.
+
+Profiles created before accounts existed have no owner and are hidden. Give them to an account with:
+
+```bash
+cd backend && .venv/bin/python -m app.manage accounts                      # list accounts and profiles
+cd backend && .venv/bin/python -m app.manage assign-orphans demo@healthcopilot.in
+```
 
 ### Docker
 
@@ -105,6 +122,8 @@ If HTTPS calls fail with certificate errors, for example behind Zscaler:
 | `ENABLE_VERIFICATION` | `true` | Turns the second-model read on or off |
 | `DATABASE_URL` | SQLite in `backend/data` | e.g. `postgresql+psycopg://…` |
 | `CA_BUNDLE` | — | Custom CA bundle for TLS-inspecting proxies |
+| `SESSION_DAYS` | `30` | How long a sign-in lasts |
+| `COOKIE_SECURE` | `false` | Set `true` when served over HTTPS |
 
 The **Gemini free tier allows only about 20 requests per model per day**. One document uses 3 requests (classify,
 extract, verify), and each summary or chat answer uses one or two more. For demos and evaluation runs, use a key with
@@ -150,8 +169,10 @@ docs/          architecture.md (+ PNG diagrams) · slides.md / slides.pdf · dem
   - Page images go to the configured LLM provider for extraction.
   - Summaries and chat receive fact sheets with gender, age and clinical facts only: no name, phone number or ABHA
     identifier.
-  - For production you would need authentication, encryption at rest, and a provider agreement that meets the
-    DPDP Act.
+  - Each account sees only its own records. *Delete account* (API: `POST /api/auth/delete-account`) removes the
+    account, its profiles, records and uploaded files.
+  - For production you would also need encryption at rest, HTTPS (`COOKIE_SECURE=true`), and a provider agreement
+    that meets the DPDP Act.
 
 ## Security
 

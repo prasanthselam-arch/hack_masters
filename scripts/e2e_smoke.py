@@ -2,13 +2,14 @@
 
     backend/.venv/bin/python scripts/e2e_smoke.py [--api http://127.0.0.1:8000] [--sample eval/samples/rx_typed_english.png] [--keep]
 
-Creates a throwaway patient, uploads a sample, waits for the pipeline, confirms the review,
-then checks the record, FHIR bundles, a Hindi summary, the chat and the mock ABHA flow.
-The patient is deleted at the end unless --keep is given.
+Registers a throwaway account and patient, uploads a sample, waits for the pipeline, confirms the review,
+then checks the record, FHIR bundles, a Hindi summary, the chat, the mock ABHA flow and that a second
+account cannot see any of it. The accounts are deleted at the end unless --keep is given.
 """
 
 import argparse
 import mimetypes
+import secrets
 import sys
 import time
 from pathlib import Path
@@ -34,6 +35,16 @@ def main() -> int:
 
     health = c.get("/api/health").json()
     print(f"backend ok · provider {health['llm_provider']} · models {health['models']}")
+    password = secrets.token_urlsafe(12)
+    login = f"e2e-{secrets.token_hex(4)}@example.com"
+    print("accounts")
+    check("protected API needs sign-in", c.get("/api/patients").status_code == 401)
+    reg = c.post("/api/auth/register", json={"name": "E2E Smoke Test", "login": login, "password": password})
+    check("register signs in", reg.status_code == 200 and c.get("/api/auth/me").status_code == 200, login)
+    if reg.status_code != 200:
+        return 1
+    other = httpx.Client(base_url=args.api, timeout=60)
+    other.post("/api/auth/register", json={"name": "Other", "login": "x" + login, "password": password}).raise_for_status()
     pid = c.post("/api/patients", json={"name": "E2E Smoke Test", "gender": "male", "birth_date": "1980-01-01"}).json()["id"]
     try:
         print("upload + pipeline")
@@ -92,9 +103,14 @@ def main() -> int:
         check("ABHA link with OTP", ok.status_code == 200)
         imp = c.post(f"/api/patients/{pid}/abha/import", json={})
         check("HIP import", imp.status_code == 200, str({k: v for k, v in imp.json().items() if k != "consent"})[:160])
+
+        print("privacy")
+        seen = [other.get(u).status_code for u in (f"/api/patients/{pid}", f"/api/documents/{did}", f"/api/documents/{did}/file")]
+        check("other account gets 404", seen == [404, 404, 404] and other.get("/api/patients").json() == [], str(seen))
     finally:
         if not args.keep:
-            c.delete(f"/api/patients/{pid}")
+            c.post("/api/auth/delete-account", json={"password": password})
+            other.post("/api/auth/delete-account", json={"password": password})
     print(f"\n{'ALL PASSED' if not failures else 'FAILED: ' + ', '.join(failures)}")
     return 1 if failures else 0
 

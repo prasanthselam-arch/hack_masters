@@ -20,8 +20,26 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class Account(SQLModel, table=True):
+    """A person who signs in. One account can manage several patient profiles (self and family)."""
+
+    id: str = Field(default_factory=new_id, primary_key=True)
+    login: str = Field(index=True, unique=True)  # lower-cased email or 10-digit Indian mobile number
+    name: str
+    password_hash: str
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class AuthSession(SQLModel, table=True):
+    token_hash: str = Field(primary_key=True)  # sha256 of the cookie token; the token itself is never stored
+    account_id: str = Field(index=True)
+    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime
+
+
 class Patient(SQLModel, table=True):
     id: str = Field(default_factory=new_id, primary_key=True)
+    owner_id: str | None = Field(default=None, index=True)  # Account.id
     name: str
     gender: str | None = None  # male | female | other | unknown (FHIR AdministrativeGender)
     birth_date: date | None = None

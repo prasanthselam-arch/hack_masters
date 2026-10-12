@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     worker_threads: int = 3
 
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    session_days: int = 30
+    cookie_secure: bool = False  # set true when served over HTTPS
     demo_otp: str = "123456"
 
 

@@ -1,25 +1,31 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { FileHeart, Languages, ShieldCheck } from 'lucide-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import { Brand } from '@/components/Layout'
+import { Link, useNavigate } from 'react-router-dom'
+import { WelcomeHero } from '@/components/Hero'
 import { Disclaimer } from '@/components/medical'
 import { Button, Card, ErrorNote, Input, Label, Select } from '@/components/ui'
 import { LANGUAGES } from '@/i18n'
 import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { useLang, usePatient } from '@/lib/patient'
 import type { Lang } from '@/lib/types'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
-export default function Onboarding() {
+/** Creates the account's first profile, or (with `addMember`) another profile for a family member. */
+export default function Onboarding({ addMember = false }: { addMember?: boolean }) {
   const { t, i18n } = useTranslation()
   const lang = useLang()
   const qc = useQueryClient()
   const nav = useNavigate()
   const { select } = usePatient()
-  const [form, setForm] = useState({ name: '', gender: '', birth_date: '', phone: '' })
+  const { account } = useAuth()
+  const ownMobile = account && /^\d{10}$/.test(account.login) ? account.login : ''
+  const [form, setForm] = useState(
+    addMember ? { name: '', gender: '', birth_date: '', phone: '' } : { name: account?.name ?? '', gender: '', birth_date: '', phone: ownMobile },
+  )
 
   const create = useMutation({
     mutationFn: () =>
@@ -47,18 +53,18 @@ export default function Onboarding() {
   return (
     <div className="min-h-full bg-gradient-to-br from-brand-50 via-white to-sky-50">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-2 lg:py-20">
-        <div className="flex flex-col justify-center">
-          <Brand />
-          <h1 className="mt-8 text-4xl font-semibold tracking-tight text-slate-900">{t('onboarding.title')}</h1>
-          <p className="mt-3 text-lg text-slate-600">{t('onboarding.subtitle')}</p>
-          <ul className="mt-8 space-y-4 text-slate-700">
-            <Feature icon={<FileHeart className="h-5 w-5" />} text={t('upload.subtitle')} />
-            <Feature icon={<Languages className="h-5 w-5" />} text={LANGUAGES.map((l) => l.label).join(' · ')} />
-            <Feature icon={<ShieldCheck className="h-5 w-5" />} text={t('abha.subtitle')} />
-          </ul>
-        </div>
+        <WelcomeHero
+          title={addMember ? t('profile.add_title') : t('onboarding.title')}
+          subtitle={addMember ? t('profile.add_sub') : t('onboarding.subtitle')}
+        />
 
         <Card className="p-6 sm:p-8">
+          {addMember && (
+            <Link to="/" className="mb-5 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
+              <ArrowLeft className="h-4 w-4" />
+              {t('common.back')}
+            </Link>
+          )}
           <form onSubmit={submit} className="space-y-5">
             <label className="block">
               <Label>{t('onboarding.language')}</Label>
@@ -95,21 +101,12 @@ export default function Onboarding() {
             </label>
             {create.error && <ErrorNote error={create.error} />}
             <Button type="submit" size="lg" className="w-full" loading={create.isPending} disabled={!form.name.trim()}>
-              {t('onboarding.create')}
+              {addMember ? t('profile.add') : t('onboarding.create')}
             </Button>
             <Disclaimer />
           </form>
         </Card>
       </div>
     </div>
-  )
-}
-
-function Feature({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="rounded-lg bg-white p-2 text-brand-600 shadow-sm ring-1 ring-slate-200">{icon}</span>
-      <span className="pt-1.5 text-sm">{text}</span>
-    </li>
   )
 }

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import documents, insights, patients
+from app.api import auth, documents, insights, patients
 from app.config import get_settings
 from app.db import init_db
 from app.knowledge import drugs, icd10, labs
@@ -25,6 +25,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Personal Health Copilot API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins, allow_methods=["*"], allow_headers=["*"])
+app.include_router(auth.router)
 app.include_router(patients.router)
 app.include_router(documents.router)
 app.include_router(insights.router)

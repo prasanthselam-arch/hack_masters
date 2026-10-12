@@ -1,3 +1,10 @@
+export interface Account {
+  id: string
+  name: string
+  login: string
+  created_at: string
+}
+
 export type Lang = 'en' | 'hi' | 'te' | 'ta' | 'kn'
 export type Flag = 'N' | 'L' | 'H' | 'LL' | 'HH' | 'A' | null
 
