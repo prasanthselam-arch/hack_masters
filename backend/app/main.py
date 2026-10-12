@@ -29,7 +29,7 @@ async def lifespan(_: FastAPI):
     datastore.stop()
 
 
-app = FastAPI(title="Personal Health Copilot API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Personal Health Copilot API", version="2.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins, allow_methods=["*"], allow_headers=["*"])
 app.include_router(auth.router)
 app.include_router(patients.router)
