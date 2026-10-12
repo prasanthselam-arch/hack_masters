@@ -1,0 +1,92 @@
+{
+  "id": "lab_thyroid_lft_tamil_photo",
+  "description": "Phone photo (rotated, perspective, shadow) of a Tamil + English thyroid / liver / vitamin report",
+  "tags": [
+    "photo",
+    "bilingual",
+    "ta",
+    "lab",
+    "rotated"
+  ],
+  "doc_type": "lab_report",
+  "document_date": "2026-07-21",
+  "sex": "female",
+  "observations": [
+    {
+      "name": "TSH",
+      "loinc": "3016-3",
+      "value": 8.9,
+      "unit": "µIU/mL",
+      "interpretation": "H",
+      "ref": "0.4 - 4.5"
+    },
+    {
+      "name": "Free T4",
+      "loinc": "3024-7",
+      "value": 0.7,
+      "unit": "ng/dL",
+      "interpretation": "L",
+      "ref": "0.8 - 1.8"
+    },
+    {
+      "name": "Total Bilirubin",
+      "loinc": "1975-2",
+      "value": 0.8,
+      "unit": "mg/dL",
+      "interpretation": "N",
+      "ref": "0.3 - 1.2"
+    },
+    {
+      "name": "SGOT (AST)",
+      "loinc": "1920-8",
+      "value": 52,
+      "unit": "U/L",
+      "interpretation": "H",
+      "ref": "8 - 43"
+    },
+    {
+      "name": "SGPT (ALT)",
+      "loinc": "1742-6",
+      "value": 61,
+      "unit": "U/L",
+      "interpretation": "H",
+      "ref": "7 - 45"
+    },
+    {
+      "name": "Alkaline Phosphatase",
+      "loinc": "6768-6",
+      "value": 98,
+      "unit": "U/L",
+      "interpretation": "N",
+      "ref": "35 - 104"
+    },
+    {
+      "name": "Albumin",
+      "loinc": "1751-7",
+      "value": 4.1,
+      "unit": "g/dL",
+      "interpretation": "N",
+      "ref": "3.5 - 5.2"
+    },
+    {
+      "name": "Vitamin D (25-OH)",
+      "loinc": "62292-8",
+      "value": 14.2,
+      "unit": "ng/mL",
+      "interpretation": "L",
+      "ref": "30 - 100"
+    },
+    {
+      "name": "Vitamin B12",
+      "loinc": "2132-9",
+      "value": 176,
+      "unit": "pg/mL",
+      "interpretation": "L",
+      "ref": "200 - 900"
+    }
+  ],
+  "medications": [],
+  "conditions": [],
+  "file": "lab_thyroid_lft_tamil_photo.jpg",
+  "mime": "image/jpeg"
+}

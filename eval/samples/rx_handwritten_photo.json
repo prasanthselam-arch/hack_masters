@@ -1,0 +1,70 @@
+{
+  "id": "rx_handwritten_photo",
+  "description": "Phone photo of a handwritten prescription (anaemia, vitamin D) with weekly dosing",
+  "tags": [
+    "handwritten",
+    "photo",
+    "rotated",
+    "prescription"
+  ],
+  "doc_type": "prescription",
+  "document_date": "2026-08-30",
+  "sex": "female",
+  "observations": [
+    {
+      "name": "Hemoglobin",
+      "loinc": "718-7",
+      "value": 9.6,
+      "unit": "gm%",
+      "interpretation": "L",
+      "ref": ""
+    }
+  ],
+  "medications": [
+    {
+      "name": "Orofer XT",
+      "generic": "Ferrous ascorbate + Folic acid",
+      "strength": null,
+      "morning": 1,
+      "afternoon": 0,
+      "night": 0,
+      "duration_days": 90,
+      "meal_relation": "after_food",
+      "written": "Tab Orofer XT   1-0-0  after breakfast  x 3 months"
+    },
+    {
+      "name": "Uprise-D3",
+      "generic": "Cholecalciferol (Vitamin D3)",
+      "strength": "60000 IU",
+      "morning": null,
+      "afternoon": null,
+      "night": null,
+      "duration_days": 56,
+      "meal_relation": null,
+      "written": "Cap Uprise D3 60K   once a week  x 8 weeks"
+    },
+    {
+      "name": "Shelcal",
+      "generic": "Calcium carbonate + Vitamin D3",
+      "strength": "500 mg",
+      "morning": 0,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 60,
+      "meal_relation": "after_food",
+      "written": "Tab Shelcal 500   0-0-1  after dinner  x 2 months"
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Iron deficiency anaemia",
+      "icd10": "D50.9"
+    },
+    {
+      "name": "Vitamin D deficiency",
+      "icd10": "E55.9"
+    }
+  ],
+  "file": "rx_handwritten_photo.jpg",
+  "mime": "image/jpeg"
+}

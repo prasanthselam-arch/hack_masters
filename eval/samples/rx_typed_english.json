@@ -1,0 +1,108 @@
+{
+  "id": "rx_typed_english",
+  "description": "Typed OPD prescription with vitals, shorthand frequencies (1-1-1, OD, BD, HS)",
+  "tags": [
+    "printed",
+    "prescription",
+    "vitals"
+  ],
+  "doc_type": "prescription",
+  "document_date": "2026-09-05",
+  "sex": "male",
+  "observations": [
+    {
+      "name": "Systolic Blood Pressure",
+      "loinc": "8480-6",
+      "value": 118,
+      "unit": "mmHg",
+      "interpretation": "N",
+      "ref": ""
+    },
+    {
+      "name": "Diastolic Blood Pressure",
+      "loinc": "8462-4",
+      "value": 76,
+      "unit": "mmHg",
+      "interpretation": "N",
+      "ref": ""
+    },
+    {
+      "name": "Pulse Rate",
+      "loinc": "8867-4",
+      "value": 92,
+      "unit": "/min",
+      "interpretation": "N",
+      "ref": ""
+    },
+    {
+      "name": "Body Temperature",
+      "loinc": "8310-5",
+      "value": 101.2,
+      "unit": "°F",
+      "interpretation": "H",
+      "ref": ""
+    },
+    {
+      "name": "Oxygen Saturation (SpO2)",
+      "loinc": "59408-5",
+      "value": 98,
+      "unit": "%",
+      "interpretation": "N",
+      "ref": ""
+    }
+  ],
+  "medications": [
+    {
+      "name": "Dolo",
+      "generic": "Paracetamol",
+      "strength": "650 mg",
+      "morning": 1,
+      "afternoon": 1,
+      "night": 1,
+      "duration_days": 3,
+      "meal_relation": "after_food",
+      "written": "Tab. Dolo 650 mg        1 - 1 - 1   x 3 days   (after food)"
+    },
+    {
+      "name": "Azithral",
+      "generic": "Azithromycin",
+      "strength": "500 mg",
+      "morning": 1,
+      "afternoon": 0,
+      "night": 0,
+      "duration_days": 3,
+      "meal_relation": "empty_stomach",
+      "written": "Tab. Azithral 500 mg     OD  x 3 days   (empty stomach)"
+    },
+    {
+      "name": "Montair-LC",
+      "generic": "Montelukast + Levocetirizine",
+      "strength": null,
+      "morning": 0,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 5,
+      "meal_relation": null,
+      "written": "Tab. Montair LC          HS  x 5 days"
+    },
+    {
+      "name": "Pan",
+      "generic": "Pantoprazole",
+      "strength": "40 mg",
+      "morning": 1,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 5,
+      "meal_relation": "before_food",
+      "written": "Tab. Pan 40 mg           BD  x 5 days   (before food)"
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Upper respiratory tract infection",
+      "icd10": "J06.9"
+    }
+  ],
+  "file": "rx_typed_english.png",
+  "mime": "image/png"
+}

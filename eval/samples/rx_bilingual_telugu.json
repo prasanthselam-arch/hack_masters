@@ -1,0 +1,75 @@
+{
+  "id": "rx_bilingual_telugu",
+  "description": "Telugu + English prescription (hypothyroidism, hypertension) with Telugu timing instructions",
+  "tags": [
+    "printed",
+    "bilingual",
+    "te",
+    "prescription"
+  ],
+  "doc_type": "prescription",
+  "document_date": "2026-08-25",
+  "sex": "female",
+  "observations": [
+    {
+      "name": "Systolic Blood Pressure",
+      "loinc": "8480-6",
+      "value": 138,
+      "unit": "mmHg",
+      "interpretation": "H",
+      "ref": ""
+    },
+    {
+      "name": "Diastolic Blood Pressure",
+      "loinc": "8462-4",
+      "value": 88,
+      "unit": "mmHg",
+      "interpretation": "H",
+      "ref": ""
+    },
+    {
+      "name": "Body Weight",
+      "loinc": "29463-7",
+      "value": 71,
+      "unit": "kg",
+      "interpretation": null,
+      "ref": ""
+    }
+  ],
+  "medications": [
+    {
+      "name": "Thyronorm",
+      "generic": "Levothyroxine",
+      "strength": "50 mcg",
+      "morning": 1,
+      "afternoon": 0,
+      "night": 0,
+      "duration_days": 90,
+      "meal_relation": "empty_stomach",
+      "written": ""
+    },
+    {
+      "name": "Amlong",
+      "generic": "Amlodipine",
+      "strength": "5 mg",
+      "morning": 0,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 90,
+      "meal_relation": "after_food",
+      "written": ""
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Hypothyroidism",
+      "icd10": "E03.9"
+    },
+    {
+      "name": "Hypertension",
+      "icd10": "I10"
+    }
+  ],
+  "file": "rx_bilingual_telugu.png",
+  "mime": "image/png"
+}

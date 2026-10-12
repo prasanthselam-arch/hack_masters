@@ -1,0 +1,99 @@
+{
+  "id": "lab_diabetes_lipid_pdf",
+  "description": "Two-page digital PDF (text layer): diabetes, lipid and kidney panel",
+  "tags": [
+    "pdf",
+    "text_layer",
+    "multi_page",
+    "lab"
+  ],
+  "doc_type": "lab_report",
+  "document_date": "2026-09-03",
+  "sex": "male",
+  "observations": [
+    {
+      "name": "Fasting Blood Glucose",
+      "loinc": "1558-6",
+      "value": 132,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": "70 - 99"
+    },
+    {
+      "name": "Post Prandial Blood Glucose (2 hr)",
+      "loinc": "1521-4",
+      "value": 198,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": "70 - 139"
+    },
+    {
+      "name": "HbA1c (Glycated Haemoglobin)",
+      "loinc": "4548-4",
+      "value": 7.4,
+      "unit": "%",
+      "interpretation": "H",
+      "ref": "4.0 - 5.6"
+    },
+    {
+      "name": "Total Cholesterol",
+      "loinc": "2093-3",
+      "value": 214,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": "< 200"
+    },
+    {
+      "name": "Triglycerides",
+      "loinc": "2571-8",
+      "value": 189,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": "< 150"
+    },
+    {
+      "name": "HDL Cholesterol",
+      "loinc": "2085-9",
+      "value": 38,
+      "unit": "mg/dL",
+      "interpretation": "L",
+      "ref": "> 40"
+    },
+    {
+      "name": "LDL Cholesterol",
+      "loinc": "13457-7",
+      "value": 138,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": "< 100"
+    },
+    {
+      "name": "VLDL Cholesterol",
+      "loinc": "13458-5",
+      "value": 38,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": "< 30"
+    },
+    {
+      "name": "Serum Creatinine",
+      "loinc": "2160-0",
+      "value": 1.1,
+      "unit": "mg/dL",
+      "interpretation": "N",
+      "ref": "0.7 - 1.3"
+    },
+    {
+      "name": "eGFR (CKD-EPI)",
+      "loinc": "33914-3",
+      "value": 78,
+      "unit": "mL/min/1.73m2",
+      "interpretation": "L",
+      "ref": "> 90"
+    }
+  ],
+  "medications": [],
+  "conditions": [],
+  "file": "lab_diabetes_lipid_pdf.pdf",
+  "mime": "application/pdf"
+}

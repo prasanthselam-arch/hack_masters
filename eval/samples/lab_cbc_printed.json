@@ -1,0 +1,138 @@
+{
+  "id": "lab_cbc_printed",
+  "description": "Printed CBC with Indian units (cells/cumm, lakh/cumm, mill/cumm)",
+  "tags": [
+    "printed",
+    "lab",
+    "indian_units"
+  ],
+  "doc_type": "lab_report",
+  "document_date": "2026-08-14",
+  "sex": "female",
+  "observations": [
+    {
+      "name": "Haemoglobin",
+      "loinc": "718-7",
+      "value": 10.8,
+      "unit": "g/dL",
+      "interpretation": "L",
+      "ref": "12.0 - 15.5"
+    },
+    {
+      "name": "RBC Count",
+      "loinc": "789-8",
+      "value": 4.1,
+      "unit": "mill/cumm",
+      "interpretation": "N",
+      "ref": "3.8 - 4.8"
+    },
+    {
+      "name": "PCV (Haematocrit)",
+      "loinc": "4544-3",
+      "value": 33.5,
+      "unit": "%",
+      "interpretation": "L",
+      "ref": "36 - 46"
+    },
+    {
+      "name": "MCV",
+      "loinc": "787-2",
+      "value": 81.7,
+      "unit": "fL",
+      "interpretation": "L",
+      "ref": "83 - 101"
+    },
+    {
+      "name": "MCH",
+      "loinc": "785-6",
+      "value": 26.3,
+      "unit": "pg",
+      "interpretation": "L",
+      "ref": "27 - 32"
+    },
+    {
+      "name": "MCHC",
+      "loinc": "786-4",
+      "value": 32.2,
+      "unit": "g/dL",
+      "interpretation": "N",
+      "ref": "31.5 - 34.5"
+    },
+    {
+      "name": "RDW-CV",
+      "loinc": "788-0",
+      "value": 15.8,
+      "unit": "%",
+      "interpretation": "H",
+      "ref": "11.6 - 14.0"
+    },
+    {
+      "name": "Total WBC Count",
+      "loinc": "6690-2",
+      "value": 11800,
+      "unit": "cells/cumm",
+      "interpretation": "H",
+      "ref": "4000 - 11000"
+    },
+    {
+      "name": "Neutrophils",
+      "loinc": "770-8",
+      "value": 78,
+      "unit": "%",
+      "interpretation": "N",
+      "ref": "40 - 80"
+    },
+    {
+      "name": "Lymphocytes",
+      "loinc": "736-9",
+      "value": 16,
+      "unit": "%",
+      "interpretation": "L",
+      "ref": "20 - 40"
+    },
+    {
+      "name": "Monocytes",
+      "loinc": "5905-5",
+      "value": 4,
+      "unit": "%",
+      "interpretation": "N",
+      "ref": "2 - 10"
+    },
+    {
+      "name": "Eosinophils",
+      "loinc": "713-8",
+      "value": 2,
+      "unit": "%",
+      "interpretation": "N",
+      "ref": "1 - 6"
+    },
+    {
+      "name": "Basophils",
+      "loinc": "706-2",
+      "value": 0,
+      "unit": "%",
+      "interpretation": "N",
+      "ref": "0 - 2"
+    },
+    {
+      "name": "Platelet Count",
+      "loinc": "777-3",
+      "value": 2.45,
+      "unit": "lakh/cumm",
+      "interpretation": "N",
+      "ref": "1.5 - 4.1"
+    },
+    {
+      "name": "ESR",
+      "loinc": "30341-2",
+      "value": 28,
+      "unit": "mm/1st hr",
+      "interpretation": "H",
+      "ref": "0 - 20"
+    }
+  ],
+  "medications": [],
+  "conditions": [],
+  "file": "lab_cbc_printed.png",
+  "mime": "image/png"
+}

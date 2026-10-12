@@ -1,0 +1,68 @@
+{
+  "id": "rx_bilingual_hindi",
+  "description": "Hindi + English prescription with instructions in Hindi (खाने से पहले, खाली पेट, दस्त के बाद)",
+  "tags": [
+    "printed",
+    "bilingual",
+    "hi",
+    "prescription"
+  ],
+  "doc_type": "prescription",
+  "document_date": "2026-08-18",
+  "sex": "male",
+  "observations": [],
+  "medications": [
+    {
+      "name": "Ondem",
+      "generic": "Ondansetron",
+      "strength": "4 mg",
+      "morning": 1,
+      "afternoon": 1,
+      "night": 1,
+      "duration_days": 2,
+      "meal_relation": "before_food",
+      "written": ""
+    },
+    {
+      "name": "ORS",
+      "generic": "Oral rehydration salts",
+      "strength": null,
+      "morning": null,
+      "afternoon": null,
+      "night": null,
+      "duration_days": null,
+      "meal_relation": null,
+      "written": ""
+    },
+    {
+      "name": "Enterogermina",
+      "generic": "Bacillus clausii",
+      "strength": null,
+      "morning": 1,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 5,
+      "meal_relation": null,
+      "written": ""
+    },
+    {
+      "name": "Pantocid",
+      "generic": "Pantoprazole",
+      "strength": "40 mg",
+      "morning": 1,
+      "afternoon": 0,
+      "night": 0,
+      "duration_days": 5,
+      "meal_relation": "empty_stomach",
+      "written": ""
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Acute gastroenteritis",
+      "icd10": "A09"
+    }
+  ],
+  "file": "rx_bilingual_hindi.png",
+  "mime": "image/png"
+}

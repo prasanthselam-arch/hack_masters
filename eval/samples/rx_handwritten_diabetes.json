@@ -1,0 +1,100 @@
+{
+  "id": "rx_handwritten_diabetes",
+  "description": "Handwritten chronic-care prescription (T2DM, HTN, dyslipidaemia) on a ruled pad",
+  "tags": [
+    "handwritten",
+    "prescription",
+    "combination_brand"
+  ],
+  "doc_type": "prescription",
+  "document_date": "2026-08-12",
+  "sex": "male",
+  "observations": [
+    {
+      "name": "Systolic Blood Pressure",
+      "loinc": "8480-6",
+      "value": 146,
+      "unit": "mmHg",
+      "interpretation": "H",
+      "ref": ""
+    },
+    {
+      "name": "Diastolic Blood Pressure",
+      "loinc": "8462-4",
+      "value": 92,
+      "unit": "mmHg",
+      "interpretation": "H",
+      "ref": ""
+    },
+    {
+      "name": "Fasting Blood Glucose",
+      "loinc": "1558-6",
+      "value": 156,
+      "unit": "mg/dL",
+      "interpretation": "H",
+      "ref": ""
+    }
+  ],
+  "medications": [
+    {
+      "name": "Glycomet-GP",
+      "generic": "Metformin + Glimepiride",
+      "strength": null,
+      "morning": 1,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 30,
+      "meal_relation": "before_food",
+      "written": "Tab Glycomet GP 1   1-0-1  before food  x 1 month"
+    },
+    {
+      "name": "Telma",
+      "generic": "Telmisartan",
+      "strength": "40 mg",
+      "morning": 1,
+      "afternoon": 0,
+      "night": 0,
+      "duration_days": 30,
+      "meal_relation": null,
+      "written": "Tab Telma 40   1-0-0   x 1 month"
+    },
+    {
+      "name": "Rosuvas",
+      "generic": "Rosuvastatin",
+      "strength": "10 mg",
+      "morning": 0,
+      "afternoon": 0,
+      "night": 1,
+      "duration_days": 30,
+      "meal_relation": null,
+      "written": "Tab Rosuvas 10   0-0-1   x 1 month"
+    },
+    {
+      "name": "Ecosprin",
+      "generic": "Aspirin",
+      "strength": "75 mg",
+      "morning": 0,
+      "afternoon": 1,
+      "night": 0,
+      "duration_days": 30,
+      "meal_relation": "after_food",
+      "written": "Tab Ecosprin 75   0-1-0  after lunch  x 1 month"
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Type 2 diabetes mellitus",
+      "icd10": "E11.9"
+    },
+    {
+      "name": "Hypertension",
+      "icd10": "I10"
+    },
+    {
+      "name": "Dyslipidaemia",
+      "icd10": "E78.5"
+    }
+  ],
+  "file": "rx_handwritten_diabetes.png",
+  "mime": "image/png"
+}
