@@ -137,10 +137,9 @@ class LabCatalog:
 
     def match(self, *names: str | None, panel: str | None = None) -> tuple[LabTest | None, float]:
         cands = [_clean(n) for n in names if n]
-        for c in cands:
-            for variant in (c, re.sub(r"^(serum|s|blood|plasma)\.? ", "", c)):
-                if variant in self._alias:
-                    return self.tests[self._alias[variant]], 1.0
+        hit = self._exact(cands)
+        if hit:
+            return hit, 1.0
         best: tuple[LabTest | None, float] = (None, 0.0)
         for c in cands:
             if len(c) <= 4:
@@ -148,7 +147,20 @@ class LabCatalog:
             hit = process.extractOne(c, self._fuzzy_keys, scorer=fuzz.token_sort_ratio, score_cutoff=88)
             if hit and hit[1] / 100 > best[1]:
                 best = (self.tests[self._alias[hit[0]]], hit[1] / 100)
+        if best[0] is None:
+            # "HbA1c (Glycated Haemoglobin)": the name or its synonym in brackets may be known on its own
+            halves = [_clean(part) for n in names if n and "(" in n for part in re.split(r"[()]", n)]
+            hit = self._exact([h for h in halves if h])
+            if hit:
+                return hit, 1.0
         return best
+
+    def _exact(self, cands: list[str]) -> LabTest | None:
+        for c in cands:
+            for variant in (c, re.sub(r"^(serum|s|blood|plasma)\.? ", "", c)):
+                if variant in self._alias:
+                    return self.tests[self._alias[variant]]
+        return None
 
 
 # ---------------------------------------------------------------- drugs

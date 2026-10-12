@@ -51,7 +51,7 @@
     @keyframes flag { 0%, 12% { opacity: 0; transform: translateX(6px); } 20%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) {
       .tag, .chip, .glow-a, .glow-b, .heart, .trace, .ecg, .float, .beam, .flag { animation: none; }
-      .chip, .flag { opacity: 1; } .tag { opacity: 0; } .tag:first-of-type { opacity: 1; } .beam { opacity: 0; }
+      .chip, .flag { opacity: 1; } .tag { opacity: 0; } .tag[lang=en] { opacity: 1; } .beam { opacity: 0; }
       .float { transform: translate(870px, 58px) rotate(-3deg); }
     }
   </style>

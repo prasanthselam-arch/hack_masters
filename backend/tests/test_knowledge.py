@@ -33,7 +33,9 @@ def test_lab_match_aliases():
     assert cat.match("Glycosylated Haemoglobin")[0].key == "hba1c"
     assert cat.match("Serum Creatinine")[0].key == "creatinine"
     assert cat.match("Fasting Blood Sugar")[0].key == "glucose_fasting"
+    assert cat.match("HbA1c (Glycated Haemoglobin)") == (cat.tests["hba1c"], 1.0)
     assert cat.match("Totally unknown analyte")[0] is None
+    assert cat.match("Totally (unknown) analyte")[0] is None
 
 
 def test_lab_conversions():
