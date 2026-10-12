@@ -21,7 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def register(c: httpx.Client, name: str, email: str, password: str) -> httpx.Response:
     """Sign up with the email code (needs a local server without an email provider, which returns the code)."""
-    sent = c.post("/api/auth/register/start", json={"name": name, "login": email, "password": password})
+    first, _, last = name.partition(" ")
+    sent = c.post("/api/auth/register/start", json={"first_name": first, "last_name": last or first, "email": email,
+                                                    "password": password})
     if sent.status_code != 200 or "dev_code" not in sent.json():
         sys.exit(f"sign-up needs a local server without GOOGLE_SCRIPT_URL: {sent.text}")
     return c.post("/api/auth/register/verify", json={"email": email, "code": sent.json()["dev_code"]})

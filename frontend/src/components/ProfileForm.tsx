@@ -43,6 +43,7 @@ export function ProfileForm({
   onLanguageChange,
   autoFocus,
   footer,
+  askName = true,
 }: {
   initial: ProfileValues
   askRelationship: boolean
@@ -54,6 +55,8 @@ export function ProfileForm({
   onLanguageChange?: (l: Lang) => void
   autoFocus?: boolean
   footer?: ReactNode
+  /** Off for the account holder's first profile: the name already came from sign-up. */
+  askName?: boolean
 }) {
   const { t } = useTranslation()
   const [v, setV] = useState(initial)
@@ -80,40 +83,44 @@ export function ProfileForm({
 
   return (
     <form onSubmit={submit} className="space-y-5" noValidate>
-      <div className={askRelationship ? 'grid gap-5 sm:grid-cols-2' : ''}>
-        <label className="block">
-          <Label>{t('onboarding.name')}</Label>
-          <Input
-            required
-            maxLength={100}
-            value={v.name}
-            onChange={(e) => setV({ ...v, name: e.target.value })}
-            autoFocus={autoFocus}
-            autoComplete="name"
-            aria-invalid={tried && !name}
-          />
-          <FieldMessage error={tried && !name ? t('contact.required') : null} />
-        </label>
-        {askRelationship && (
-          <label className="block">
-            <Label>{t('profiles.relationship')}</Label>
-            <Select
-              required
-              value={v.relationship ?? ''}
-              onChange={(e) => setRelationship((e.target.value || null) as Relationship | null)}
-              aria-invalid={tried && !!relProblem}
-            >
-              <option value="">{t('profiles.choose_relationship')}</option>
-              {RELATIONSHIPS.filter((r) => r !== 'self').map((r) => (
-                <option key={r} value={r}>
-                  {t(`relationship.${r}`)}
-                </option>
-              ))}
-            </Select>
-            <FieldMessage error={tried ? relProblem : null} />
-          </label>
-        )}
-      </div>
+      {(askName || askRelationship) && (
+        <div className={askRelationship ? 'grid gap-5 sm:grid-cols-2' : ''}>
+          {askName && (
+            <label className="block">
+              <Label>{t('onboarding.name')}</Label>
+              <Input
+                required
+                maxLength={100}
+                value={v.name}
+                onChange={(e) => setV({ ...v, name: e.target.value })}
+                autoFocus={autoFocus}
+                autoComplete="name"
+                aria-invalid={tried && !name}
+              />
+              <FieldMessage error={tried && !name ? t('contact.required') : null} />
+            </label>
+          )}
+          {askRelationship && (
+            <label className="block">
+              <Label>{t('profiles.relationship')}</Label>
+              <Select
+                required
+                value={v.relationship ?? ''}
+                onChange={(e) => setRelationship((e.target.value || null) as Relationship | null)}
+                aria-invalid={tried && !!relProblem}
+              >
+                <option value="">{t('profiles.choose_relationship')}</option>
+                {RELATIONSHIPS.filter((r) => r !== 'self').map((r) => (
+                  <option key={r} value={r}>
+                    {t(`relationship.${r}`)}
+                  </option>
+                ))}
+              </Select>
+              <FieldMessage error={tried ? relProblem : null} />
+            </label>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block">

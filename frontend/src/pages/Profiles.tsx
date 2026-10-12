@@ -258,7 +258,8 @@ function AccountDetails({ account }: { account: Account }) {
   const { t } = useTranslation()
   const lang = useLang()
   const qc = useQueryClient()
-  const [name, setName] = useState(account.name)
+  const [first, setFirst] = useState(() => splitName(account.name)[0])
+  const [last, setLast] = useState(() => splitName(account.name)[1])
   const [login, setLogin] = useState<LoginValue>({ value: account.login, valid: true, kind: account.login.includes('@') ? 'email' : 'phone' })
   const [password, setPassword] = useState('')
   const [tried, setTried] = useState(false)
@@ -268,7 +269,7 @@ function AccountDetails({ account }: { account: Account }) {
   const save = useMutation({
     mutationFn: () =>
       api.updateMe({
-        name: name.trim(),
+        name: `${first.trim()} ${last.trim()}`,
         ...(loginChanged ? { login: login.value, current_password: password } : {}),
       }),
     onSuccess: (acc) => {
@@ -281,7 +282,7 @@ function AccountDetails({ account }: { account: Account }) {
     e.preventDefault()
     setTried(true)
     setSaved(false)
-    if (name.trim() && login.valid && (!loginChanged || password)) save.mutate()
+    if (first.trim() && last.trim() && login.valid && (!loginChanged || password)) save.mutate()
   }
 
   return (
@@ -291,11 +292,18 @@ function AccountDetails({ account }: { account: Account }) {
         {t('profiles.member_since', { date: fmtDate(account.created_at, lang) })}
       </p>
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <label className="block">
-          <Label>{t('auth.name')}</Label>
-          <Input value={name} maxLength={100} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-          <FieldMessage error={tried && !name.trim() ? t('contact.required') : null} />
-        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <Label>{t('auth.first_name')}</Label>
+            <Input value={first} maxLength={50} onChange={(e) => setFirst(e.target.value)} autoComplete="given-name" />
+            <FieldMessage error={tried && !first.trim() ? t('contact.required') : null} />
+          </label>
+          <label className="block">
+            <Label>{t('auth.last_name')}</Label>
+            <Input value={last} maxLength={50} onChange={(e) => setLast(e.target.value)} autoComplete="family-name" />
+            <FieldMessage error={tried && !last.trim() ? t('contact.required') : null} />
+          </label>
+        </div>
         <div>
           <Label>{t('auth.login')}</Label>
           <LoginInput initial={account.login} onChange={setLogin} showErrors={tried} hint={t('profiles.login_hint')} />
@@ -492,6 +500,12 @@ function NotificationSettings({ account }: { account: Account }) {
       {save.error && <ErrorNote error={save.error} />}
     </Card>
   )
+}
+
+/** "Sai Krishna Reddy" -> ["Sai Krishna", "Reddy"]: accounts store one name, the last word is the last name. */
+function splitName(name: string): [string, string] {
+  const words = name.trim().split(/\s+/)
+  return words.length > 1 ? [words.slice(0, -1).join(' '), words[words.length - 1]] : [words[0] ?? '', '']
 }
 
 function ChangePassword() {

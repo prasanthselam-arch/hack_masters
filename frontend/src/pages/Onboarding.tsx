@@ -43,8 +43,12 @@ export default function Onboarding({ addMember = false }: { addMember?: boolean 
               {t('common.back')}
             </Link>
           )}
+          {!addMember && account && (
+            <p className="mb-5 text-sm text-slate-600">{t('onboarding.for_you', { name: account.name.split(' ')[0] })}</p>
+          )}
           <ProfileForm
-            autoFocus
+            autoFocus={addMember}
+            askName={addMember || !account?.name}
             askRelationship={addMember}
             initial={
               addMember

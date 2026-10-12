@@ -103,20 +103,31 @@ def find_account(db: Session, login: str) -> Account | None:
     return acc
 
 
-def signup_details(db: Session, name: str, login: str, email: str | None, password: str) -> tuple[str, dict]:
-    """Check a sign-up before its email code is sent. Returns the email to verify and what to save once it is."""
-    login = normalize_login(login)
-    if not name.strip():
-        raise AuthError("Please enter your name")
-    email = login if "@" in login else normalize_email(email) if email and email.strip() else None
-    if not email:
-        raise AuthError("Please add your email. We send a code there to verify your account and to reset your password")
+_NAME_SYMBOLS = set("@<>{}[]()\\/|#$%^*=+~`;:\"!?&_,")
+
+
+def clean_name_part(raw: str, label: str) -> str:
+    part = " ".join(raw.split())
+    if not part:
+        raise AuthError(f"Please enter your {label}")
+    if len(part) > 50:
+        raise AuthError(f"Your {label} is too long")
+    if any(ch.isdigit() or ch in _NAME_SYMBOLS for ch in part):
+        raise AuthError(f"Your {label} can't contain numbers or symbols")
+    return part
+
+
+def signup_details(db: Session, first_name: str, last_name: str, email: str, password: str) -> tuple[str, dict]:
+    """Check a sign-up before its email code is sent. Returns the email to verify and what to save once it is.
+    New accounts sign up with an email, because that is where the code goes."""
+    first, last = clean_name_part(first_name, "first name"), clean_name_part(last_name, "last name")
+    if not email.strip() or "@" not in email:
+        raise AuthError("Please sign up with your email address. We send a code there to verify it")
+    email = normalize_email(email)
     check_password_strength(password)
-    if db.exec(select(Account).where(Account.login == login)).first():
-        raise AuthError("An account with this email or mobile number already exists. Please sign in")
-    if email_in_use(db, email):
-        raise AuthError("Another account already uses this email. Sign in, or use a different email")
-    return email, {"name": name.strip()[:100], "login": login, "password_hash": hash_password(password)}
+    if db.exec(select(Account).where(Account.login == email)).first() or email_in_use(db, email):
+        raise AuthError("An account with this email already exists. Please sign in")
+    return email, {"name": f"{first} {last}", "login": email, "password_hash": hash_password(password)}
 
 
 def register(db: Session, details: dict, email: str) -> Account:

@@ -87,13 +87,14 @@ After a `git pull`, just run `./run.sh restart`: start and restart first install
 
 ### Accounts
 
-Anyone can create an account with an email address or a mobile number (any of 20 countries, India by default) and a password. Each account sees
+Anyone can create an account with their first and last name, an email address and a password. After signing up, the
+sign-in can be switched to a mobile number (any of 20 countries, India by default) in the account settings. Each account sees
 only its own profiles and documents, and can hold several profiles, for example parents or children. Requests for
 another account's records return 404. Sessions use an HttpOnly cookie (30 days), passwords are stored as scrypt
 hashes, and repeated wrong passwords are throttled.
 
-Every new account verifies an email with a 6-digit code (accounts that sign in with a mobile number add one; free
-SMS isn't available, so mobile numbers aren't verified by text). The email is used to reset a forgotten password and,
+Every new account verifies its email with a 6-digit code before it is created (free SMS isn't available, so mobile
+numbers aren't verified by text). The email is used to reset a forgotten password and,
 if the user keeps them on, for security alerts (new sign-in, password or email changed), medicine-course reminders and
 a weekly summary. Codes expire after 10 minutes, allow 5 tries, and at most 5 can be sent to an email per hour.
 Accounts created before this see a reminder on the dashboard to add an email. Locally, without an email provider,

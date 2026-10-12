@@ -17,6 +17,8 @@ import { codeComplete } from '@/lib/utils'
 
 type Mode = 'sign_in' | 'sign_up' | 'verify' | 'forgot' | 'reset'
 
+const NAME_SYMBOLS = /[\d@<>{}[\]()\\/|#$%^*=+~`;:"!?&_,]/
+
 const TITLES: Record<Mode, [string, string]> = {
   sign_in: ['auth.welcome', 'auth.welcome_sub'],
   sign_up: ['auth.create_title', 'auth.create_sub'],
@@ -29,15 +31,15 @@ export default function AuthPage() {
   const { t } = useTranslation()
   const { signedIn } = useAuth()
   const [mode, setMode] = useState<Mode>(() => (new URLSearchParams(window.location.search).has('forgot') ? 'forgot' : 'sign_in'))
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ first: '', last: '', email: '', password: '', confirm: '' })
   const [login, setLogin] = useState<LoginValue>({ value: '', valid: false, kind: 'empty' })
   const [code, setCode] = useState('')
   const [sent, setSent] = useState<CodeSent | null>(null)
   const [sends, setSends] = useState(0)
   const [tried, setTried] = useState(false)
 
-  const needsEmail = login.kind === 'phone'
-  const email = needsEmail ? form.email.trim().toLowerCase() : login.value
+  const email = form.email.trim().toLowerCase()
+  const nameProblem = (v: string) => (!v.trim() ? t('contact.required') : NAME_SYMBOLS.test(v) ? t('auth.name_invalid') : null)
   const codeSent = (next: Mode) => (s: CodeSent) => {
     setSent(s)
     setSends((n) => n + 1)
@@ -53,7 +55,7 @@ export default function AuthPage() {
   const signIn = useMutation({ mutationFn: () => api.login({ login: login.value, password: form.password }), onSuccess: done })
   const startSignUp = useMutation({
     mutationFn: () =>
-      api.registerStart({ name: form.name.trim(), login: login.value, email: needsEmail ? email : undefined, password: form.password }),
+      api.registerStart({ first_name: form.first.trim(), last_name: form.last.trim(), email, password: form.password }),
     onSuccess: codeSent('verify'),
   })
   const verify = useMutation({ mutationFn: () => api.registerVerify({ email: sent?.sent_to ?? email, code }), onSuccess: done })
@@ -66,6 +68,9 @@ export default function AuthPage() {
   const resend = mode === 'verify' ? startSignUp : forgot
 
   const go = (m: Mode) => {
+    // Carry the email over between signing in and creating an account.
+    if (m === 'sign_up' && login.kind === 'email' && !form.email) setForm((f) => ({ ...f, email: login.value }))
+    if (m === 'sign_in' && mode === 'sign_up' && emailValid(form.email)) setLogin({ value: email, valid: true, kind: 'email' })
     setMode(m)
     setTried(false)
     for (const mutation of [signIn, startSignUp, verify, forgot, reset]) mutation.reset()
@@ -76,7 +81,7 @@ export default function AuthPage() {
   const passwordOk = form.password.length >= 8
   const valid = {
     sign_in: login.valid && !!form.password,
-    sign_up: login.valid && !!form.name.trim() && passwordOk && (!needsEmail || emailValid(form.email)),
+    sign_up: !nameProblem(form.first) && !nameProblem(form.last) && emailValid(form.email) && passwordOk,
     verify: codeComplete(code),
     forgot: login.valid,
     reset: codeComplete(code) && passwordOk && form.confirm === form.password,
@@ -110,14 +115,21 @@ export default function AuthPage() {
 
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
           {mode === 'sign_up' && (
-            <label className="block">
-              <Label>{t('auth.name')}</Label>
-              <Input value={form.name} onChange={(e) => set('name')(e.target.value)} autoComplete="name" autoFocus />
-              <FieldMessage error={tried && !form.name.trim() ? t('contact.required') : null} />
-            </label>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="block">
+                <Label>{t('auth.first_name')}</Label>
+                <Input value={form.first} maxLength={50} onChange={(e) => set('first')(e.target.value)} autoComplete="given-name" autoFocus />
+                <FieldMessage error={tried || NAME_SYMBOLS.test(form.first) ? nameProblem(form.first) : null} />
+              </label>
+              <label className="block">
+                <Label>{t('auth.last_name')}</Label>
+                <Input value={form.last} maxLength={50} onChange={(e) => set('last')(e.target.value)} autoComplete="family-name" />
+                <FieldMessage error={tried || NAME_SYMBOLS.test(form.last) ? nameProblem(form.last) : null} />
+              </label>
+            </div>
           )}
-          {(mode === 'sign_in' || mode === 'sign_up' || mode === 'forgot') && loginField(mode !== 'sign_up')}
-          {mode === 'sign_up' && needsEmail && (
+          {(mode === 'sign_in' || mode === 'forgot') && loginField(true)}
+          {mode === 'sign_up' && (
             <label className="block">
               <Label>{t('auth.email')}</Label>
               <Input type="email" value={form.email} onChange={(e) => set('email')(e.target.value)} autoComplete="email" />

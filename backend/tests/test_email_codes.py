@@ -13,10 +13,13 @@ from tests.test_auth import _client, engine  # noqa: F401  (engine is a fixture)
 START, VERIFY = "/api/auth/register/start", "/api/auth/register/verify"
 
 
-def test_sign_up_with_a_mobile_number_needs_a_verified_email(engine, local_mail):
+def test_sign_up_takes_an_email_and_a_first_and_last_name(engine, local_mail):
     c = TestClient(app)
-    body = {"name": "Ravi", "login": "98765 43210", "password": "secret-pass"}
-    assert "add your email" in c.post(START, json=body).json()["detail"]
+    body = {"first_name": " Ravi ", "last_name": "Kumar  Reddy", "password": "secret-pass"}
+    assert "sign up with your email" in c.post(START, json={**body, "email": "98765 43210"}).json()["detail"]
+    assert "last name" in c.post(START, json={**body, "last_name": " ", "email": "ravi@example.com"}).json()["detail"]
+    assert "numbers or symbols" in c.post(START, json={**body, "first_name": "R4vi", "email": "ravi@example.com"}).json()["detail"]
+    assert c.post(START, json={**body, "first_name": "रवि", "email": "x@example.com"}).status_code == 200  # any script
     sent = c.post(START, json={**body, "email": "Ravi@Example.com"}).json()
     assert sent["sent_to"] == "ravi@example.com" and len(sent["dev_code"]) == 6
     assert local_mail[-1].to == "ravi@example.com" and sent["dev_code"] in local_mail[-1].text
@@ -26,20 +29,22 @@ def test_sign_up_with_a_mobile_number_needs_a_verified_email(engine, local_mail)
     r = c.post(VERIFY, json={"email": "ravi@example.com", "code": wrong})
     assert r.status_code == 400 and "4 tries left" in r.json()["detail"]
     me = c.post(VERIFY, json={"email": "ravi@example.com", "code": sent["dev_code"]}).json()
-    assert me["login"] == "+919876543210" and me["email"] == "ravi@example.com" and me["email_verified"]
+    assert me["login"] == "ravi@example.com" and me["name"] == "Ravi Kumar Reddy" and me["email_verified"]
     assert c.post(VERIFY, json={"email": "ravi@example.com", "code": sent["dev_code"]}).status_code == 400  # used up
 
-    # the verified email is another way to sign in, and belongs to this account only
+    # switching the sign-in to a mobile number keeps the verified email as another way in, for this account only
+    c.patch("/api/auth/me", json={"login": "98765 43210", "current_password": "secret-pass"}).raise_for_status()
     other = TestClient(app)
     assert other.post("/api/auth/login", json={"login": "ravi@example.com", "password": "secret-pass"}).status_code == 200
-    assert "already uses this email" in other.post(START, json={"name": "X", "login": "ravi@example.com", "password": "secret-pass"}).json()["detail"]
+    assert other.post("/api/auth/login", json={"login": "9876543210", "password": "secret-pass"}).status_code == 200
+    assert "already exists" in other.post(START, json={**body, "email": "ravi@example.com"}).json()["detail"]
 
 
 def test_codes_expire_and_resending_is_rate_limited(engine, monkeypatch):
     from app.services import codes
 
     c = TestClient(app)
-    body = {"name": "Asha", "login": "asha@example.com", "password": "secret-pass"}
+    body = {"first_name": "Asha", "last_name": "Rao", "email": "asha@example.com", "password": "secret-pass"}
     first = c.post(START, json=body).json()["dev_code"]
     second = c.post(START, json=body).json()["dev_code"]
     if first != second:
@@ -119,7 +124,7 @@ def test_sign_in_alert_names_the_device(engine, local_mail):
 
 def test_production_without_an_email_provider_refuses_instead_of_leaking_codes(engine, monkeypatch):
     monkeypatch.setattr(get_settings(), "cookie_secure", True)
-    r = TestClient(app).post(START, json={"name": "Asha", "login": "asha@example.com", "password": "secret-pass"})
+    r = TestClient(app).post(START, json={"first_name": "Asha", "last_name": "Rao", "email": "asha@example.com", "password": "secret-pass"})
     assert r.status_code == 503 and "dev_code" not in r.text
 
 

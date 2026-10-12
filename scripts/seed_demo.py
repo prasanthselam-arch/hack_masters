@@ -39,7 +39,9 @@ def wait(c: httpx.Client, did: str) -> dict:
 def register(c: httpx.Client, name: str, login: str, password: str) -> httpx.Response:
     """Sign up with the email code. Local servers without an email provider return the code; otherwise ask for it."""
     email = login if "@" in login else input(f"email for {login}: ").strip()
-    sent = c.post("/api/auth/register/start", json={"name": name, "login": login, "email": email, "password": password})
+    first, _, last = name.partition(" ")
+    sent = c.post("/api/auth/register/start", json={"first_name": first, "last_name": last or first, "email": email,
+                                                    "password": password})
     if sent.status_code != 200:
         return sent
     code = sent.json().get("dev_code") or input(f"code emailed to {email}: ").strip()

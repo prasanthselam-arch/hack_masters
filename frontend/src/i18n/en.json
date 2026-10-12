@@ -53,7 +53,8 @@
     "language": "Preferred language",
     "create": "Create profile",
     "why_gender": "Used to pick the right reference ranges for lab results.",
-    "unknown": "Not specified"
+    "unknown": "Not specified",
+    "for_you": "Hi {{name}}! A few details about you help explain your results correctly."
   },
   "dashboard": {
     "greeting": "Hello, {{name}}",
@@ -433,7 +434,10 @@
     "reset_sub": "Enter the code from your email and choose a new password. Other devices will be signed out.",
     "reset_submit": "Save password and sign in",
     "email": "Email",
-    "email_hint": "We send a code here to verify your account, and it's how you reset a forgotten password."
+    "email_hint": "We send a code here to verify your account, and it's how you reset a forgotten password.",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "name_invalid": "Names can't contain numbers or symbols"
   },
   "profile": {
     "add": "Add family member",

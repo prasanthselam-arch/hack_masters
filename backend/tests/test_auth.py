@@ -25,12 +25,16 @@ def engine():
 
 
 def _client(name: str, login: str, password: str = "secret-pass", email: str | None = None) -> TestClient:
+    """Sign up with an email; for a mobile login, switch to it afterwards in the account settings."""
     c = TestClient(app)
     email = email or (login.lower() if "@" in login else f"{''.join(ch for ch in login if ch.isdigit())}@example.com")
-    sent = c.post("/api/auth/register/start", json={"name": name, "login": login, "email": email, "password": password})
+    first, _, last = name.partition(" ")
+    sent = c.post("/api/auth/register/start", json={"first_name": first, "last_name": last or "Test", "email": email, "password": password})
     assert sent.status_code == 200, sent.text
     r = c.post("/api/auth/register/verify", json={"email": email, "code": sent.json()["dev_code"]})
     assert r.status_code == 200, r.text
+    if "@" not in login:
+        c.patch("/api/auth/me", json={"name": name, "login": login, "current_password": password}).raise_for_status()
     return c
 
 
@@ -48,10 +52,10 @@ def test_login_normalization_and_password_hash():
 
 def test_register_login_logout(engine):
     c = _client("Asha", "asha@example.com")
-    assert c.get("/api/auth/me").json()["name"] == "Asha"
-    start = "/api/auth/register/start"
-    assert TestClient(app).post(start, json={"name": "X", "login": "ASHA@example.com", "password": "another-pass"}).status_code == 400
-    assert TestClient(app).post(start, json={"name": "X", "login": "x@example.com", "password": "short"}).status_code == 400
+    assert c.get("/api/auth/me").json()["name"] == "Asha Test"
+    start, person = "/api/auth/register/start", {"first_name": "X", "last_name": "Y"}
+    assert TestClient(app).post(start, json={**person, "email": "ASHA@example.com", "password": "another-pass"}).status_code == 400
+    assert TestClient(app).post(start, json={**person, "email": "x@example.com", "password": "short"}).status_code == 400
 
     c.post("/api/auth/logout")
     assert c.get("/api/auth/me").status_code == 401

@@ -61,7 +61,7 @@ const json = (method: string, body?: unknown): RequestInit => ({
 export const api = {
   health: () => request<Health>('/api/health'),
   me: () => request<Account>('/api/auth/me'),
-  registerStart: (body: { name: string; login: string; email?: string; password: string }) =>
+  registerStart: (body: { first_name: string; last_name: string; email: string; password: string }) =>
     request<CodeSent>('/api/auth/register/start', json('POST', body)),
   registerVerify: (body: { email: string; code: string }) => request<Account>('/api/auth/register/verify', json('POST', body)),
   forgotPassword: (login: string) => request<CodeSent>('/api/auth/forgot', json('POST', { login })),

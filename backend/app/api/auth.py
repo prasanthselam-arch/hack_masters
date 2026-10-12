@@ -16,9 +16,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class RegisterIn(BaseModel):
-    name: str
-    login: str
-    email: str | None = None  # required when the login is a mobile number
+    first_name: str
+    last_name: str
+    email: str
     password: str
 
 
@@ -96,7 +96,7 @@ def _fail(e: Exception) -> HTTPException:
 def register_start(body: RegisterIn, db: Session = Depends(get_session)):
     """Check the details and email a code. Nothing is saved until the code is confirmed."""
     try:
-        email, details = auth.signup_details(db, body.name, body.login, body.email, body.password)
+        email, details = auth.signup_details(db, body.first_name, body.last_name, body.email, body.password)
         return codes.issue(db, email, "signup", payload=details)
     except (auth.AuthError, codes.CodeError, mailer.MailError) as e:
         raise _fail(e) from e
