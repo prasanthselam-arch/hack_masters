@@ -30,6 +30,3 @@ eval/runs/
 .vscode/
 .idea/
 .tools/
-
-# Demo video (upload separately)
-docs/submission/*.mp4

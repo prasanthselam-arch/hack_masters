@@ -10,7 +10,7 @@
 ![Languages](https://img.shields.io/badge/languages-EN%20%C2%B7%20HI%20%C2%B7%20TE%20%C2%B7%20TA%20%C2%B7%20KN-2ea44f)
 ![Hosting](https://img.shields.io/badge/hosting-100%25%20free%20tier-8a2be2)
 
-[**Live demo**](https://health-copilot-kl7g.onrender.com) · [**Full documentation**](DOCUMENT.md) · [Architecture](docs/architecture.md) · [Slides](docs/slides.pdf) · [Demo script](docs/demo_script.md)
+[**Live demo**](https://health-copilot-kl7g.onrender.com) · [**Demo video**](docs/submission/Health-Copilot-demo.mp4) · [**Full documentation**](DOCUMENT.md) · [Architecture](docs/architecture.md) · [Slides](docs/slides.pdf) · [Deck (PPTX)](docs/submission/Health-Copilot-demo.pptx) · [Demo script](docs/demo_script.md)
 
 </div>
 
