@@ -61,6 +61,13 @@ npm run dev                     # http://localhost:5173 (proxies /api to :8000)
 
 Or use the control script, which runs both servers in the background with logs in `.run/`:
 
+On a fresh Ubuntu/Debian machine, install the prerequisites first (Node 22 from [nodejs.org](https://nodejs.org) or
+NodeSource), then run the script as your normal user, not with `sudo`:
+
+```bash
+sudo apt install python3 python3-venv lsof curl
+```
+
 ```bash
 ./run.sh setup                 # first time: virtualenv, pip and npm install, creates backend/.env
 ./run.sh start                 # backend :8000 + frontend :5173

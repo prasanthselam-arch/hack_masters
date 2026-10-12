@@ -127,9 +127,48 @@ status_one() {
 }
 
 setup() {
+  local venv="$ROOT/backend/.venv" py="${PYTHON:-python3}"
+  if [[ $EUID -eq 0 && -z ${ALLOW_ROOT:-} ]]; then
+    red "Don't run setup with sudo: it leaves root-owned files that the app can't write to later."
+    dim "Run it as your normal user: ./run.sh setup"
+    dim "If an earlier sudo run left files behind: sudo chown -R \"\$USER\": $ROOT"
+    exit 1
+  fi
+  if ! command -v "$py" >/dev/null; then
+    red "python3 not found. Install Python 3.12 (Ubuntu/Debian: sudo apt install python3 python3-venv)."; exit 1
+  fi
+  if ! "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))'; then
+    red "Python 3.11+ is needed, found $("$py" --version 2>&1). Install 3.12 and rerun with PYTHON=python3.12 ./run.sh setup"; exit 1
+  fi
+  if ! command -v npm >/dev/null; then
+    red "Node.js not found. Install Node 22 (https://nodejs.org or: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install nodejs)."; exit 1
+  fi
+  if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)||(a===20&&b>=19)?0:1)'; then
+    red "Node 20.19+ or 22.12+ is needed, found $(node --version). Install Node 22."; exit 1
+  fi
+
+  local owned_by_root
+  owned_by_root=$(find "$ROOT/.run" "$ROOT/backend" "$ROOT/frontend" -maxdepth 2 -user 0 -print -quit 2>/dev/null)
+  if [[ $EUID -ne 0 && -n $owned_by_root ]]; then
+    red "Some files are owned by root (e.g. $owned_by_root), probably from an earlier 'sudo ./run.sh'. Fix with:"
+    dim "  sudo chown -R \"\$USER\": $ROOT"
+    exit 1
+  fi
+
   echo "backend: creating virtualenv and installing requirements…"
-  [[ -d $ROOT/backend/.venv ]] || python3 -m venv "$ROOT/backend/.venv"
-  "$ROOT/backend/.venv/bin/pip" install -q -r "$ROOT/backend/requirements.txt"
+  # A failed earlier attempt (no python3-venv) leaves a .venv without pip; start again.
+  [[ -x $venv/bin/pip ]] || rm -rf "$venv"
+  [[ -d $venv ]] || "$py" -m venv "$venv" || true
+  if [[ ! -x $venv/bin/pip ]]; then
+    rm -rf "$venv"
+    local ver; ver=$("$py" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
+    red "Could not create a virtualenv with pip. On Ubuntu/Debian install the venv package, then rerun:"
+    dim "  sudo apt install python3-venv python$ver-venv"
+    dim "  ./run.sh setup"
+    exit 1
+  fi
+  "$venv/bin/pip" install -q --upgrade pip
+  "$venv/bin/pip" install -q -r "$ROOT/backend/requirements.txt"
   [[ -f $ROOT/backend/.env ]] || { cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"; echo "created backend/.env, add your GEMINI_API_KEY"; }
   echo "frontend: installing packages…"
   (cd "$ROOT/frontend" && npm install --no-audit --no-fund)
