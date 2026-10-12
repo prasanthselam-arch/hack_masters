@@ -24,6 +24,8 @@ def test_number_grounding():
 
 def test_redact_and_translation_numbers():
     assert redact("Your sugar is high. Stop taking your medicines now.") == "Your sugar is high."
+    table = "Your medicines:\n\n| Medicine | When |\n| --- | --- |\n| Glycomet | 1-0-1 |\n\nStop taking your medicines now. Ask your doctor."
+    assert redact(table) == "Your medicines:\n\n| Medicine | When |\n| --- | --- |\n| Glycomet | 1-0-1 |\n\nAsk your doctor."
     assert numbers_preserved("HbA1c 7.4% on 2026-02-03", "एचबीए1सी 7.4% 2026-02-03")
     assert not numbers_preserved("HbA1c 7.4%", "HbA1c 7.2%")
 

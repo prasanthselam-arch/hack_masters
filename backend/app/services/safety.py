@@ -119,10 +119,17 @@ def is_emergency(message: str) -> bool:
 
 
 def redact(text: str) -> str:
-    """Last resort: drop sentences that contain forbidden advice."""
-    sentences = re.split(r"(?<=[.!?।])\s+", text)
-    keep = [s for s in sentences if check_text(s).passed]
-    return " ".join(keep)
+    """Last resort: drop sentences (or Markdown table rows) that contain forbidden advice, keeping the line layout."""
+    out = []
+    for line in text.split("\n"):
+        if not line.strip() or line.lstrip().startswith("|"):
+            if check_text(line).passed:
+                out.append(line)
+            continue
+        keep = [s for s in re.split(r"(?<=[.!?।])\s+", line) if check_text(s).passed]
+        if keep:
+            out.append(" ".join(keep))
+    return "\n".join(out).strip()
 
 
 def numbers_preserved(source: str, translated: str) -> bool:

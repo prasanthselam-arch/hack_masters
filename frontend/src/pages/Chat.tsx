@@ -1,20 +1,47 @@
 import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, BookMarked, Bot, Info, Send, Stethoscope, User } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowUp,
+  BookMarked,
+  Check,
+  ChevronDown,
+  Copy,
+  FlaskConical,
+  Info,
+  LineChart,
+  MessageCircleHeart,
+  Pill,
+  SquarePen,
+  Stethoscope,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import Markdown from 'react-markdown'
-import { Link } from 'react-router-dom'
-import { Badge, Button, Card, ErrorNote, PageHeader } from '@/components/ui'
+import { ChatMarkdown } from '@/components/chat/ChatMarkdown'
+import { MedicinesCard, ResultsCard, SourceLink } from '@/components/chat/RecordCards'
+import { Button, Card, ErrorNote } from '@/components/ui'
 import { api } from '@/lib/api'
+import { markdownToText } from '@/lib/markdown'
 import { useActivePatient, useLang } from '@/lib/patient'
-import type { ChatReply } from '@/lib/types'
-import { fmtDate } from '@/lib/utils'
+import type { ChatReply, Lang } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface Msg {
   role: 'user' | 'assistant'
   content: string
   reply?: ChatReply
+  at?: number
 }
+
+const SUGGESTIONS = [
+  { key: 's1', icon: FlaskConical },
+  { key: 's2', icon: Pill },
+  { key: 's3', icon: LineChart },
+  { key: 's4', icon: Stethoscope },
+] as const
+
+const SPEECH_LANG: Record<Lang, string> = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN', kn: 'kn-IN' }
 
 export default function Chat() {
   const { t } = useTranslation()
@@ -24,87 +51,138 @@ export default function Chat() {
   const [messages, setMessages] = useState<Msg[]>(() => JSON.parse(sessionStorage.getItem(storeKey) ?? '[]'))
   const [input, setInput] = useState('')
   const end = useRef<HTMLDivElement>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
+
+  const ask = useMutation({
+    mutationFn: ({ text, history }: { text: string; history: Msg[] }) =>
+      api.chat(
+        patient.id,
+        text,
+        history.slice(-8).map((m) => ({ role: m.role, content: m.content })),
+        lang,
+      ),
+    onSuccess: (reply) => setMessages((m) => [...m, { role: 'assistant', content: reply.answer, reply, at: Date.now() }]),
+  })
 
   useEffect(() => {
     sessionStorage.setItem(storeKey, JSON.stringify(messages.slice(-30)))
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, storeKey])
+  }, [messages, storeKey, ask.isPending])
 
-  const ask = useMutation({
-    mutationFn: (text: string) =>
-      api.chat(
-        patient.id,
-        text,
-        messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
-        lang,
-      ),
-    onSuccess: (reply) => setMessages((m) => [...m, { role: 'assistant', content: reply.answer, reply }]),
-  })
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [input])
 
   const send = (text: string) => {
     const q = text.trim()
     if (!q || ask.isPending) return
-    setMessages((m) => [...m, { role: 'user', content: q }])
+    ask.mutate({ text: q, history: messages })
+    setMessages((m) => [...m, { role: 'user', content: q, at: Date.now() }])
     setInput('')
-    ask.mutate(q)
+  }
+  const retry = () => {
+    const last = messages[messages.length - 1]
+    if (last?.role === 'user') ask.mutate({ text: last.content, history: messages.slice(0, -1) })
+  }
+  const newChat = () => {
+    window.speechSynthesis?.cancel()
+    ask.reset()
+    setMessages([])
+    box.current?.focus()
   }
   const submit = (e: FormEvent) => {
     e.preventDefault()
     send(input)
   }
 
+  const lastAssistant = messages.map((m) => m.role).lastIndexOf('assistant')
+  const firstName = patient.name.split(' ')[0]
+
   return (
-    <div className="flex h-[calc(100vh-9rem)] flex-col lg:h-[calc(100vh-10rem)]">
-      <PageHeader title={t('chat.title')} subtitle={t('chat.subtitle')} />
-      <Card className="flex min-h-0 flex-1 flex-col">
-        <div className="scrollbar-thin flex-1 space-y-5 overflow-y-auto p-5">
-          {messages.length === 0 && (
-            <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="rounded-full bg-brand-50 p-4 text-brand-600">
-                <Bot className="h-8 w-8" />
-              </div>
-              <p className="mt-3 max-w-md text-slate-600">{t('chat.subtitle')}</p>
-              <div className="mt-5 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
-                {['s1', 's2', 's3', 's4'].map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => send(t(`chat.${k}`))}
-                    className="rounded-xl bg-white px-4 py-3 text-left text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-brand-50 hover:ring-brand-200"
-                  >
-                    {t(`chat.${k}`)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {messages.map((m, i) => (m.role === 'user' ? <UserBubble key={i} text={m.content} /> : <AssistantBubble key={i} m={m} />))}
-          {ask.isPending && (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Bot className="h-4 w-4 animate-pulse text-brand-600" />
-              {t('chat.thinking')}
-            </div>
-          )}
-          {ask.error && <ErrorNote error={ask.error} />}
-          <div ref={end} />
+    <div className="flex h-[calc(100dvh-12rem)] flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-8.5rem)]">
+      <div className="mb-4 flex items-start justify-between gap-3 lg:mb-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{t('chat.title')}</h1>
+          <p className="mt-1 hidden text-slate-500 sm:block">{t('chat.subtitle')}</p>
         </div>
-        <form onSubmit={submit} className="flex items-end gap-2 border-t border-slate-100 p-3">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                send(input)
-              }
-            }}
-            rows={1}
-            placeholder={t('chat.placeholder')}
-            className="max-h-40 min-h-11 flex-1 resize-none rounded-xl border-0 bg-slate-50 px-4 py-3 text-sm ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
-          <Button type="submit" size="lg" disabled={!input.trim()} loading={ask.isPending} className="h-11">
-            <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.send')}</span>
+        {messages.length > 0 && (
+          <Button variant="secondary" size="sm" onClick={newChat} title={t('chat.new_chat')}>
+            <SquarePen className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('chat.new_chat')}</span>
           </Button>
+        )}
+      </div>
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="scrollbar-thin flex-1 overflow-y-auto bg-gradient-to-b from-slate-50/60 to-white">
+          <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center pt-6 text-center sm:pt-12">
+                <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-3.5 text-white shadow-lg shadow-brand-600/20">
+                  <MessageCircleHeart className="h-7 w-7" />
+                </div>
+                <h2 className="mt-4 text-xl font-semibold text-slate-900">{t('chat.greeting', { name: firstName })}</h2>
+                <p className="mt-1.5 max-w-md text-sm text-slate-500">{t('chat.subtitle')}</p>
+                <div className="mt-7 grid w-full gap-2.5 sm:grid-cols-2">
+                  {SUGGESTIONS.map(({ key, icon: Icon }) => (
+                    <button
+                      key={key}
+                      onClick={() => send(t(`chat.${key}`))}
+                      className="group flex items-start gap-3 rounded-xl bg-white px-4 py-3.5 text-left text-sm text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-300"
+                    >
+                      <span className="rounded-lg bg-brand-50 p-1.5 text-brand-600 transition-colors group-hover:bg-brand-100">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="pt-0.5">{t(`chat.${key}`)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((m, i) =>
+              m.role === 'user' ? (
+                <UserBubble key={i} text={m.content} />
+              ) : (
+                <AssistantMessage key={i} m={m} followUps={i === lastAssistant && !ask.isPending ? m.reply?.follow_ups : undefined} onAsk={send} />
+              ),
+            )}
+
+            {ask.isPending && <Thinking />}
+            {ask.error && <ErrorNote error={ask.error} onRetry={retry} />}
+            <div ref={end} />
+          </div>
+        </div>
+
+        <form onSubmit={submit} className="border-t border-slate-100 bg-white px-3 pb-2 pt-3 sm:px-4">
+          <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl bg-slate-50 p-1.5 ring-1 ring-inset ring-slate-200 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-500">
+            <textarea
+              ref={box}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault()
+                  send(input)
+                }
+              }}
+              rows={1}
+              placeholder={t('chat.placeholder')}
+              className="max-h-40 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || ask.isPending}
+              title={t('chat.send')}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              <ArrowUp className="h-4 w-4" />
+              <span className="sr-only">{t('chat.send')}</span>
+            </button>
+          </div>
+          <p className="mx-auto mt-1.5 hidden max-w-3xl px-2 text-[11px] text-slate-400 sm:block">{t('chat.enter_hint')}</p>
         </form>
       </Card>
     </div>
@@ -113,71 +191,163 @@ export default function Chat() {
 
 function UserBubble({ text }: { text: string }) {
   return (
-    <div className="flex justify-end gap-2">
-      <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-brand-600 px-4 py-2.5 text-sm text-white">{text}</div>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600">
-        <User className="h-4 w-4" />
+    <div className="flex justify-end">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-brand-600 px-4 py-2.5 text-[0.925rem] text-white shadow-sm sm:max-w-[75%]">
+        {text}
       </div>
     </div>
   )
 }
 
-function AssistantBubble({ m }: { m: Msg }) {
-  const { t } = useTranslation()
-  const lang = useLang()
-  const r = m.reply
+function Avatar() {
   return (
-    <div className="flex gap-2">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
-        <Bot className="h-4 w-4" />
+    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm sm:flex">
+      <MessageCircleHeart className="h-4 w-4" />
+    </div>
+  )
+}
+
+function Thinking() {
+  const { t } = useTranslation()
+  return (
+    <div className="flex gap-3">
+      <Avatar />
+      <div className="flex items-center gap-3 rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+        <span className="flex gap-1">
+          {[0, 150, 300].map((d) => (
+            <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand-500" style={{ animationDelay: `${d}ms` }} />
+          ))}
+        </span>
+        {t('chat.thinking')}
       </div>
-      <div className="min-w-0 max-w-[85%] space-y-2">
+    </div>
+  )
+}
+
+function AssistantMessage({ m, followUps, onAsk }: { m: Msg; followUps?: string[]; onAsk: (q: string) => void }) {
+  const { t } = useTranslation()
+  const r = m.reply
+  const [showSources, setShowSources] = useState(false)
+  return (
+    <div className="flex gap-3">
+      <Avatar />
+      <div className="min-w-0 flex-1 space-y-2.5">
         {r?.emergency_notice && (
-          <div className="flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-800 ring-1 ring-red-200">
+          <div className="flex items-start gap-2 rounded-xl bg-red-50 px-3.5 py-3 text-sm font-medium text-red-800 ring-1 ring-red-200">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             {r.emergency_notice}
           </div>
         )}
-        <div className="prose-sm rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 ring-1 ring-slate-200 [&_li]:ml-4 [&_ol]:list-decimal [&_p+p]:mt-2 [&_ul]:list-disc">
-          <Markdown>{m.content}</Markdown>
+
+        <div className="rounded-2xl rounded-tl-md bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+          {r && !r.answered_from_records && (
+            <p className="mb-2 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+              <Info className="h-3 w-3" />
+              {t('chat.not_in_records')}
+            </p>
+          )}
+          <ChatMarkdown text={m.content} />
+          {r?.suggest_doctor && (
+            <p className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-2.5 text-xs text-slate-500">
+              <Stethoscope className="h-3.5 w-3.5 text-brand-600" />
+              {t('chat.doctor_hint')}
+            </p>
+          )}
         </div>
-        {r && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {!r.answered_from_records && (
-              <Badge className="bg-slate-100">
-                <Info className="h-3 w-3" />
-                {t('chat.not_in_records')}
-              </Badge>
-            )}
-            {r.citations.length > 0 && (
-              <>
-                <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                  <BookMarked className="h-3 w-3" />
-                  {t('chat.sources')}:
-                </span>
-                {r.citations.map((c) =>
-                  c.document_id ? (
-                    <Link key={c.id} to={`/documents/${c.document_id}`}>
-                      <Badge className="bg-white hover:bg-brand-50">
-                        {c.label}
-                        {c.date && ` · ${fmtDate(c.date, lang)}`}
-                      </Badge>
-                    </Link>
-                  ) : (
-                    <Badge key={c.id}>{c.label}</Badge>
-                  ),
-                )}
-              </>
-            )}
+
+        {r && r.results?.length > 0 && <ResultsCard results={r.results} />}
+        {r && r.medications?.length > 0 && <MedicinesCard meds={r.medications} />}
+
+        <div className="flex flex-wrap items-center gap-1">
+          <CopyButton text={markdownToText(m.content)} />
+          <ListenButton text={markdownToText(m.content)} />
+          {r && r.citations.length > 0 && (
+            <button
+              onClick={() => setShowSources((s) => !s)}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <BookMarked className="h-3.5 w-3.5" />
+              {t('chat.sources_count', { count: r.citations.length })}
+              <ChevronDown className={cn('h-3 w-3 transition-transform', showSources && 'rotate-180')} />
+            </button>
+          )}
+        </div>
+        {r && showSources && (
+          <div className="flex flex-wrap gap-1.5">
+            {r.citations.map((c) => (
+              <SourceLink key={c.id} id={c.id} label={c.label} date={c.date} documentId={c.document_id} />
+            ))}
           </div>
         )}
-        {r?.suggest_doctor && (
-          <p className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Stethoscope className="h-3.5 w-3.5" />
-            {t('chat.doctor_hint')}
-          </p>
+
+        {followUps && followUps.length > 0 && (
+          <div className="pt-1">
+            <p className="mb-1.5 text-xs font-medium text-slate-400">{t('chat.follow_ups')}</p>
+            <div className="flex flex-wrap gap-2">
+              {followUps.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => onAsk(q)}
+                  className="rounded-full bg-brand-50 px-3 py-1.5 text-left text-sm text-brand-800 ring-1 ring-brand-200 transition-colors hover:bg-brand-100"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
+  )
+}
+
+const actionCls = 'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700'
+
+function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation()
+  const [done, setDone] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Clipboard API needs a secure context; opening the dev server by LAN IP over http is not one.
+      const ta = Object.assign(document.createElement('textarea'), { value: text })
+      document.body.append(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+    setDone(true)
+    setTimeout(() => setDone(false), 1500)
+  }
+  return (
+    <button onClick={copy} className={actionCls}>
+      {done ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+      {done ? t('chat.copied') : t('chat.copy')}
+    </button>
+  )
+}
+
+function ListenButton({ text }: { text: string }) {
+  const { t } = useTranslation()
+  const lang = useLang()
+  const [speaking, setSpeaking] = useState(false)
+  useEffect(() => () => void (speaking && window.speechSynthesis.cancel()), [speaking])
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null
+  const toggle = () => {
+    window.speechSynthesis.cancel()
+    if (speaking) return setSpeaking(false)
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = SPEECH_LANG[lang]
+    u.rate = 0.95
+    u.onend = u.onerror = () => setSpeaking(false)
+    window.speechSynthesis.speak(u)
+    setSpeaking(true)
+  }
+  return (
+    <button onClick={toggle} className={cn(actionCls, speaking && 'bg-brand-50 text-brand-700')}>
+      {speaking ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+      {speaking ? t('chat.stop') : t('chat.listen')}
+    </button>
   )
 }

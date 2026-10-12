@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, LineChart as LineIcon, TrendingDown, TrendingUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { FlagBadge } from '@/components/medical'
 import { Badge, Card, CardHeader, Empty, ErrorNote, PageHeader, Spinner } from '@/components/ui'
@@ -17,7 +17,8 @@ export default function Trends() {
   const { t } = useTranslation()
   const patient = useActivePatient()
   const q = useQuery({ queryKey: ['trends', patient.id], queryFn: () => api.trends(patient.id) })
-  const [selected, setSelected] = useState<string | null>(null)
+  const [params] = useSearchParams()
+  const [selected, setSelected] = useState<string | null>(params.get('test'))
   const series = q.data ?? []
   const current = series.find((s) => s.key === selected) ?? series[0]
 

@@ -315,6 +315,9 @@ export interface Summary {
 export interface ChatReply {
   answer: string
   citations: { id: string; kind: string; label: string; date: string | null; document_id: string | null }[]
+  results: (Observation & { trend: { date: string; value: number; flag: Flag }[] })[]
+  medications: Medication[]
+  follow_ups: string[]
   answered_from_records: boolean
   suggest_doctor: boolean
   emergency_notice: string | null
