@@ -11,9 +11,13 @@
     "medications": "Medicines",
     "chat": "Ask Copilot",
     "abha": "ABHA & Records",
-    "profiles": "Family & account",
+    "profiles": "Family",
     "group_records": "Your records",
-    "group_assist": "Assistant & sharing"
+    "group_assist": "Assistant & sharing",
+    "short_home": "Home",
+    "short_chat": "Ask",
+    "more": "More",
+    "account": "Your account"
   },
   "common": {
     "loading": "Loading…",
@@ -54,7 +58,8 @@
     "create": "Create profile",
     "why_gender": "Used to pick the right reference ranges for lab results.",
     "unknown": "Not specified",
-    "for_you": "Hi {{name}}! A few details about you help explain your results correctly."
+    "for_you": "Hi {{name}}! A few details about you help explain your results correctly.",
+    "choose_gender": "Select gender"
   },
   "dashboard": {
     "greeting": "Hello, {{name}}",
@@ -150,7 +155,8 @@
     "reject": {
       "file-too-large": "file is larger than 25 MB",
       "file-invalid-type": "use PDF, JPG, PNG or WEBP"
-    }
+    },
+    "delete_confirm": "Delete this upload? Nothing from it has been saved to your records yet."
   },
   "review": {
     "title": "Review extracted information",
@@ -403,7 +409,7 @@
   "auth": {
     "sign_in": "Sign in",
     "sign_up": "Create account",
-    "welcome": "Welcome back",
+    "welcome": "Welcome",
     "welcome_sub": "Sign in to see your health records.",
     "create_title": "Create your account",
     "create_sub": "Your records are private to your account.",
@@ -423,7 +429,7 @@
     "forgot": "Forgot password?",
     "forgot_title": "Reset your password",
     "forgot_sub": "Enter the email or mobile number you sign in with. We'll email a code to the account's verified email.",
-    "forgot_no_email": "Never added an email to your account? Then it can't be reset by email. If you're still signed in on another device, add an email under Family & account.",
+    "forgot_no_email": "Never added an email to your account? Then it can't be reset by email. If you're still signed in on another device, add an email under Your account.",
     "send_code": "Email me a code",
     "verify_title": "Check your email",
     "verify_sub": "Enter the code we sent to finish creating your account.",
@@ -437,7 +443,11 @@
     "email_hint": "We send a code here to verify your account, and it's how you reset a forgotten password.",
     "first_name": "First name",
     "last_name": "Last name",
-    "name_invalid": "Names can't contain numbers or symbols"
+    "name_invalid": "Names can't contain numbers or symbols",
+    "phone_optional": "Mobile number (optional)",
+    "phone_hint": "Add it to sign in with your mobile number or your email.",
+    "sign_out_title": "Sign out?",
+    "sign_out_body": "You'll need your email or mobile number and password to sign in again."
   },
   "profile": {
     "add": "Add family member",
@@ -456,7 +466,7 @@
   },
   "profiles": {
     "title": "Manage family",
-    "subtitle": "Add, edit or remove the family members whose health records you keep, and manage your sign-in.",
+    "subtitle": "Add, edit or remove the family members whose health records you keep.",
     "family": "Family members",
     "account": "Your account",
     "viewing": "Viewing now",
@@ -473,9 +483,9 @@
     "dob_invalid": "Enter a date between 1900 and today",
     "details": "Sign-in details",
     "member_since": "Member since {{date}}",
-    "login_hint": "Changing this needs your current password.",
+    "phone": "Mobile number",
+    "phone_hint": "Optional. You can sign in with your email or this number.",
     "current_password": "Current password",
-    "password_needed": "Enter your current password to change the sign-in email or mobile",
     "saved": "Saved",
     "change_password": "Change password",
     "change_password_sub": "Other devices will be signed out.",
@@ -555,5 +565,10 @@
     "medicines_sub": "When a medicine course is about to end or has just ended",
     "weekly": "Weekly summary",
     "weekly_sub": "New records, results outside the usual range and active medicines"
+  },
+  "account": {
+    "title": "Your account",
+    "subtitle": "Your sign-in details, email, password and notifications.",
+    "menu": "Account menu"
   }
 }

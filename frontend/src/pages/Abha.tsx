@@ -70,7 +70,7 @@ export default function Abha() {
     <div className="space-y-6">
       <PageHeader title={t('abha.title')} subtitle={t('abha.subtitle')} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader
             icon={<ShieldCheck className="h-5 w-5" />}

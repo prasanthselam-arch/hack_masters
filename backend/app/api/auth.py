@@ -20,6 +20,7 @@ class RegisterIn(BaseModel):
     last_name: str
     email: str
     password: str
+    phone: str | None = None
 
 
 class CodeIn(BaseModel):
@@ -58,6 +59,7 @@ class DeleteIn(BaseModel):
 class AccountPatch(BaseModel):
     name: str | None = None
     login: str | None = None
+    phone: str | None = None
     current_password: str | None = None
     notify_security: bool | None = None
     notify_medicines: bool | None = None
@@ -70,7 +72,7 @@ class PasswordIn(BaseModel):
 
 
 def _account_out(a: Account) -> dict[str, Any]:
-    return {"id": a.id, "name": a.name, "login": a.login, "created_at": a.created_at, "email": a.email,
+    return {"id": a.id, "name": a.name, "login": a.login, "created_at": a.created_at, "email": a.email, "phone": a.phone,
             "email_verified": a.email_verified_at is not None,
             "notify": {"security": a.notify_security, "medicines": a.notify_medicines, "weekly": a.notify_weekly}}
 
@@ -96,7 +98,7 @@ def _fail(e: Exception) -> HTTPException:
 def register_start(body: RegisterIn, db: Session = Depends(get_session)):
     """Check the details and email a code. Nothing is saved until the code is confirmed."""
     try:
-        email, details = auth.signup_details(db, body.first_name, body.last_name, body.email, body.password)
+        email, details = auth.signup_details(db, body.first_name, body.last_name, body.email, body.password, body.phone)
         return codes.issue(db, email, "signup", payload=details)
     except (auth.AuthError, codes.CodeError, mailer.MailError) as e:
         raise _fail(e) from e
@@ -171,7 +173,7 @@ def me(acc: Account = Depends(current_account)):
 @router.patch("/me")
 def update_me(body: AccountPatch, acc: Account = Depends(current_account), db: Session = Depends(get_session)):
     try:
-        acc = auth.update_account(db, acc, body.name, body.login, body.current_password)
+        acc = auth.update_account(db, acc, body.name, body.login, body.current_password, body.phone)
     except auth.AuthError as e:
         raise HTTPException(400, str(e)) from e
     for field in ("notify_security", "notify_medicines", "notify_weekly"):

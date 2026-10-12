@@ -1,6 +1,7 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import { Loader2, RotateCcw } from 'lucide-react'
-import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { forwardRef, useEffect, useRef, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +15,7 @@ const button = cva(
         secondary: 'bg-white text-slate-700 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.08] hover:-translate-y-px hover:bg-slate-50 hover:text-slate-900',
         ghost: 'text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-900',
         danger: 'bg-white text-red-600 ring-1 ring-red-200 hover:bg-red-50 shadow-[var(--shadow-soft)]',
+        destructive: 'bg-red-600 text-white shadow-[0_10px_24px_-12px_rgb(220_38_38/0.7)] hover:-translate-y-px hover:bg-red-700',
       },
       size: { sm: 'h-8 rounded-lg px-3 text-sm', md: 'h-10 px-4 text-sm', lg: 'h-12 px-6 text-base', icon: 'h-9 w-9' },
     },
@@ -43,8 +45,8 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 
 export function CardHeader({ title, icon, action, subtitle }: { title: ReactNode; icon?: ReactNode; action?: ReactNode; subtitle?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-slate-900/[0.06] px-5 py-4">
-      <div className="flex items-start gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/[0.06] px-4 py-4 sm:px-5">
+      <div className="flex min-w-0 flex-[1_1_12rem] items-start gap-3">
         {icon && (
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-50 to-brand-100 text-brand-700 ring-1 ring-brand-200/60 [&_svg]:h-4 [&_svg]:w-4">
             {icon}
@@ -132,13 +134,13 @@ export function Empty({ icon, title, body, action }: { icon?: ReactNode; title: 
 
 export function Tabs<T extends string>({ value, onChange, items }: { value: T; onChange: (v: T) => void; items: { value: T; label: ReactNode }[] }) {
   return (
-    <div className="inline-flex flex-wrap gap-1 rounded-xl bg-slate-900/[0.05] p-1 ring-1 ring-inset ring-slate-900/[0.04]">
+    <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-slate-900/[0.05] p-1 ring-1 ring-inset ring-slate-900/[0.04] [scrollbar-width:none] sm:flex-wrap [&::-webkit-scrollbar]:hidden">
       {items.map((it) => (
         <button
           key={it.value}
           onClick={() => onChange(it.value)}
           className={cn(
-            'rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
+            'shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all',
             value === it.value ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgb(15_23_42/0.12)]' : 'text-slate-600 hover:bg-white/50 hover:text-slate-900',
           )}
         >
@@ -162,5 +164,59 @@ export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => 
         </Button>
       )}
     </div>
+  )
+}
+
+/** Centred yes/no pop-up. Escape, the backdrop and Cancel all dismiss it; Cancel has focus so Enter is safe. */
+export function ConfirmDialog({ open, title, body, icon, confirmLabel, busy, onConfirm, onCancel }: {
+  open: boolean
+  title: ReactNode
+  body?: ReactNode
+  icon?: ReactNode
+  confirmLabel: ReactNode
+  busy?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const cancel = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!open) return
+    cancel.current?.focus()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !busy && onCancel()
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = overflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open, busy, onCancel])
+  if (!open) return null
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:items-center">
+      <div className="animate-fade-in absolute inset-0 bg-ink-900/50 backdrop-blur-sm" onClick={() => !busy && onCancel()} />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        className="animate-sheet-up relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-[var(--shadow-lift)] ring-1 ring-slate-900/[0.08]"
+      >
+        {icon && <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">{icon}</div>}
+        <h2 id="confirm-title" className="text-lg font-semibold text-slate-900">
+          {title}
+        </h2>
+        {body && <p className="mt-2 text-sm leading-relaxed text-slate-500">{body}</p>}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <Button ref={cancel} variant="secondary" disabled={busy} onClick={onCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="destructive" loading={busy} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }

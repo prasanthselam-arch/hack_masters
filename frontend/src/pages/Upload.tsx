@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Camera, FileImage, FileText, Lightbulb, RotateCcw, UploadCloud } from 'lucide-react'
+import { Camera, FileImage, FileText, Lightbulb, RotateCcw, Trash2, UploadCloud } from 'lucide-react'
 import { useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
@@ -45,6 +45,15 @@ export default function UploadPage() {
     onSettled: refreshAll,
   })
   const reprocess = useMutation({ mutationFn: api.reprocess, onSettled: refreshAll })
+  const remove = useMutation({
+    mutationFn: api.deleteDocument,
+    onSettled: (_r, _e, id) => {
+      qc.removeQueries({ queryKey: ['document', id] })
+      qc.removeQueries({ queryKey: ['patientSummary', patient.id] })
+      for (const k of ['trends', 'medications']) qc.invalidateQueries({ queryKey: [k, patient.id] })
+      refreshAll()
+    },
+  })
 
   const { getRootProps, getInputProps, isDragActive, fileRejections, open } = useDropzone({
     accept: ACCEPT,
@@ -56,12 +65,12 @@ export default function UploadPage() {
     <div className="space-y-6">
       <PageHeader title={t('upload.title')} subtitle={t('upload.subtitle')} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div
             {...getRootProps()}
             className={cn(
-              'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-white px-6 py-14 text-center transition-colors',
+              'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-white px-5 py-9 text-center transition-colors sm:px-6 sm:py-14',
               isDragActive ? 'border-brand-500 bg-brand-50' : 'border-slate-300 hover:border-brand-400 hover:bg-slate-50',
             )}
           >
@@ -71,12 +80,15 @@ export default function UploadPage() {
             </div>
             <p className="mt-4 text-lg font-medium text-slate-900">{t('upload.drop')}</p>
             <p className="mt-1 text-sm text-slate-500">{t('upload.formats')}</p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="mt-5 grid w-full max-w-xs grid-cols-1 gap-2.5 sm:flex sm:w-auto sm:max-w-none sm:flex-wrap sm:items-center sm:justify-center sm:gap-3"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Button type="button" loading={upload.isPending} onClick={open}>
                 <FileText className="h-4 w-4" />
                 {upload.isPending ? t('upload.uploading') : t('upload.browse')}
               </Button>
-              <span className="text-sm text-slate-400">{t('upload.or')}</span>
+              <span className="hidden text-sm text-slate-400 sm:inline">{t('upload.or')}</span>
               <Button type="button" variant="secondary" onClick={() => camera.current?.click()} disabled={upload.isPending}>
                 <Camera className="h-4 w-4" />
                 {t('upload.camera')}
@@ -97,6 +109,7 @@ export default function UploadPage() {
           </div>
           {upload.error && <ErrorNote error={upload.error} />}
           {reprocess.error && <ErrorNote error={reprocess.error} />}
+          {remove.error && <ErrorNote error={remove.error} />}
           {fileRejections.length > 0 && (
             <ErrorNote
               error={fileRejections
@@ -110,7 +123,14 @@ export default function UploadPage() {
             {docs.data && docs.data.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {docs.data.slice(0, 15).map((d) => (
-                  <UploadRow key={d.id} d={d} retrying={reprocess.isPending && reprocess.variables === d.id} onRetry={() => reprocess.mutate(d.id)} />
+                  <UploadRow
+                    key={d.id}
+                    d={d}
+                    retrying={reprocess.isPending && reprocess.variables === d.id}
+                    onRetry={() => reprocess.mutate(d.id)}
+                    deleting={remove.isPending && remove.variables === d.id}
+                    onDelete={() => window.confirm(t(d.status === 'confirmed' ? 'docview.delete_confirm' : 'upload.delete_confirm')) && remove.mutate(d.id)}
+                  />
                 ))}
               </ul>
             ) : (
@@ -138,7 +158,19 @@ export default function UploadPage() {
   )
 }
 
-function UploadRow({ d, retrying, onRetry }: { d: DocumentInfo; retrying: boolean; onRetry: () => void }) {
+function UploadRow({
+  d,
+  retrying,
+  onRetry,
+  deleting,
+  onDelete,
+}: {
+  d: DocumentInfo
+  retrying: boolean
+  onRetry: () => void
+  deleting: boolean
+  onDelete: () => void
+}) {
   const { t } = useTranslation()
   const lang = useLang()
   const Icon = d.mime_type === 'application/pdf' ? FileText : FileImage
@@ -147,7 +179,7 @@ function UploadRow({ d, retrying, onRetry }: { d: DocumentInfo; retrying: boolea
     .map((l) => `${t(`upload.stage.${l.stage}`, { defaultValue: l.stage })} ${((l.ms ?? 0) / 1000).toFixed(1)}s`)
     .join(' · ')
   return (
-    <li className="px-5 py-4">
+    <li className="px-4 py-4 sm:px-5" data-doc={d.id}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="rounded-lg bg-slate-100 p-2 text-slate-500">
@@ -188,6 +220,17 @@ function UploadRow({ d, retrying, onRetry }: { d: DocumentInfo; retrying: boolea
               {t('upload.retry_btn')}
             </Button>
           )}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            title={t('common.delete')}
+            aria-label={`${t('common.delete')}: ${d.title || d.filename}`}
+            loading={deleting}
+            onClick={onDelete}
+          >
+            {!deleting && <Trash2 className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-4">

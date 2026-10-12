@@ -6,6 +6,8 @@ export interface Account {
   /** Where codes and alerts go; the login itself may be a mobile number. */
   email: string | null
   email_verified: boolean
+  /** E.164 mobile number that also signs in. */
+  phone: string | null
   notify: { security: boolean; medicines: boolean; weekly: boolean }
 }
 

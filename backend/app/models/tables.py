@@ -30,6 +30,7 @@ class Account(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
     email: str | None = Field(default=None, index=True)  # for codes and alerts; the login itself may be a mobile number
     email_verified_at: datetime | None = None
+    phone: str | None = Field(default=None, index=True)  # E.164 mobile number that also signs in
     notify_security: bool = True
     notify_medicines: bool = True
     notify_weekly: bool = True

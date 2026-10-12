@@ -34,8 +34,25 @@ export default function Trends() {
           <Empty icon={<LineIcon className="h-6 w-6" />} title={t('trends.empty')} />
         </Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <Card className="scrollbar-thin max-h-[75vh] overflow-y-auto p-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-5">
+          <div className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:scroll-px-6 sm:px-6 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
+            {series.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setSelected(s.key)}
+                aria-pressed={current?.key === s.key}
+                className={cn(
+                  'flex shrink-0 snap-start items-center gap-2 rounded-full px-3.5 py-2 text-sm whitespace-nowrap ring-1 transition-colors',
+                  current?.key === s.key ? 'bg-ink-900 text-white ring-ink-900 dark:bg-brand-500 dark:ring-brand-500' : 'bg-white text-slate-700 ring-slate-900/[0.08]',
+                )}
+              >
+                {isAbnormal(s.latest.interpretation) && <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />}
+                <span className="font-medium">{s.name}</span>
+                <span className={cn('tabular-nums', current?.key === s.key ? 'text-white/70' : 'text-slate-500')}>{fmtNum(s.latest.value_num)}</span>
+              </button>
+            ))}
+          </div>
+          <Card className="scrollbar-thin hidden max-h-[75vh] overflow-y-auto p-2 lg:block">
             {series.map((s) => (
               <button
                 key={s.key}
@@ -102,16 +119,16 @@ function SeriesDetail({ s }: { s: TrendSeries }) {
           </div>
         }
       />
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         {s.mixed_units && (
           <p className="mb-3 flex items-center gap-1.5 text-sm text-amber-700">
             <AlertTriangle className="h-4 w-4" />
             {t('trends.mixed_units')}
           </p>
         )}
-        <div className="h-72">
+        <div className="h-60 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: -8 }}>
+            <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: -12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               {(s.ref_low !== null || s.ref_high !== null) && (
                 <ReferenceArea

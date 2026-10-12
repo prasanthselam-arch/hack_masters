@@ -1,12 +1,14 @@
 """Orchestrates preprocess -> classify -> extract -> validate -> verify -> review."""
 
 import logging
+import shutil
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
 from app.config import get_settings
@@ -43,6 +45,30 @@ def doc_dir(doc_id: str) -> Path:
     return get_settings().storage_dir / doc_id
 
 
+class _Deleted(Exception):
+    """The document was deleted while it was being processed."""
+
+
+def _gone(db: Session, doc_id: str) -> bool:
+    with db.no_autoflush:  # flushing the pending progress first would fail on a deleted row
+        return db.exec(select(Document.id).where(Document.id == doc_id)).first() is None
+
+
+def _save(db: Session, doc: Document, doc_id: str) -> None:
+    """Commit progress, or stop if the user deleted the document in the meantime."""
+    if _gone(db, doc_id):
+        raise _Deleted
+    db.add(doc)
+    try:
+        db.commit()
+        db.refresh(doc)
+    except SQLAlchemyError:
+        db.rollback()
+        if _gone(db, doc_id):
+            raise _Deleted from None
+        raise
+
+
 def _safe_process(doc_id: str) -> None:
     try:
         process_document(doc_id)
@@ -63,9 +89,7 @@ def process_document(doc_id: str) -> None:
 
         def step(stage: str, progress: int) -> None:
             doc.status, doc.stage, doc.progress = "processing", stage, progress
-            db.add(doc)
-            db.commit()
-            db.refresh(doc)
+            _save(db, doc, doc_id)
 
         def record(stage: str, t0: float, **extra: Any) -> None:
             doc.pipeline_log = [*doc.pipeline_log, {"stage": stage, "ms": int((time.perf_counter() - t0) * 1000), **extra}]
@@ -131,11 +155,17 @@ def process_document(doc_id: str) -> None:
             record("finalizing", t0, items=payload.stats.items_total, needs_review=payload.stats.needs_review)
 
             doc.status, doc.stage, doc.progress = "review", "review", 100
+        except _Deleted:
+            pass
         except Exception as e:  # noqa: BLE001
-            log.error("pipeline failed for %s: %s\n%s", doc.id, e, traceback.format_exc())
-            doc.status, doc.stage, doc.error = "failed", "failed", str(e)[:800]
-        db.add(doc)
-        db.commit()
+            if not _gone(db, doc_id):  # a deleted document's files vanish mid-run; that is not a failure
+                log.error("pipeline failed for %s: %s\n%s", doc_id, e, traceback.format_exc())
+                doc.status, doc.stage, doc.error = "failed", "failed", str(e)[:800]
+        try:
+            _save(db, doc, doc_id)
+        except _Deleted:
+            log.info("document %s was deleted while processing", doc_id)
+            shutil.rmtree(doc_dir(doc_id), ignore_errors=True)
 
 
 def _to_date(iso: str | None):

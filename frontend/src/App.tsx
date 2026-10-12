@@ -18,6 +18,7 @@ const Medications = lazy(() => import('./pages/Medications'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Abha = lazy(() => import('./pages/Abha'))
 const Profiles = lazy(() => import('./pages/Profiles'))
+const Account = lazy(() => import('./pages/Account'))
 
 export default function App() {
   const { t } = useTranslation()
@@ -65,6 +66,7 @@ function SignedInApp() {
           <Route path="chat" element={<Chat />} />
           <Route path="abha" element={<Abha />} />
           <Route path="profiles" element={<Profiles />} />
+          <Route path="account" element={<Account />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
     </Routes>

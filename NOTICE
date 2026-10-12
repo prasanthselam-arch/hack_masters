@@ -1,0 +1,16 @@
+Health Copilot
+Copyright 2026 Prasanth Selam <prasanth.selam@gmail.com>
+Copyright 2026 Hemanth Selam <hemanth.selam@gmail.com>
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Lead developer: Prasanth Selam. Co-developer: Hemanth Selam.
+
+Any redistribution or derivative work must keep this NOTICE file, the LICENSE
+file and the copyright and attribution notices above, and must state the
+changes that were made. The license grants no permission to use the names
+"Health Copilot", Prasanth Selam or Hemanth Selam to endorse or promote
+derived products.
+
+Third-party material bundled in this repository keeps its own license:
+  - The fonts in eval/fonts are licensed under the SIL Open Font License 1.1.
+  - Other credits for data and standards are listed in DOCUMENT.md, section 11.

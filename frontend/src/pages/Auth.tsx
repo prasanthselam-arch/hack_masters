@@ -3,7 +3,7 @@ import { ArrowLeft, KeyRound, Lock, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CodeEntry } from '@/components/CodeEntry'
-import { FieldMessage, LoginInput, type LoginValue } from '@/components/ContactInputs'
+import { FieldMessage, LoginInput, PhoneInput, type LoginValue, type PhoneValue } from '@/components/ContactInputs'
 import { AuroraPage, WelcomeHero } from '@/components/Hero'
 import { LanguageSwitcher } from '@/components/Layout'
 import { Disclaimer } from '@/components/medical'
@@ -33,6 +33,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<Mode>(() => (new URLSearchParams(window.location.search).has('forgot') ? 'forgot' : 'sign_in'))
   const [form, setForm] = useState({ first: '', last: '', email: '', password: '', confirm: '' })
   const [login, setLogin] = useState<LoginValue>({ value: '', valid: false, kind: 'empty' })
+  const [phone, setPhone] = useState<PhoneValue>({ value: '', valid: true })
   const [code, setCode] = useState('')
   const [sent, setSent] = useState<CodeSent | null>(null)
   const [sends, setSends] = useState(0)
@@ -55,7 +56,13 @@ export default function AuthPage() {
   const signIn = useMutation({ mutationFn: () => api.login({ login: login.value, password: form.password }), onSuccess: done })
   const startSignUp = useMutation({
     mutationFn: () =>
-      api.registerStart({ first_name: form.first.trim(), last_name: form.last.trim(), email, password: form.password }),
+      api.registerStart({
+        first_name: form.first.trim(),
+        last_name: form.last.trim(),
+        email,
+        password: form.password,
+        ...(phone.value ? { phone: phone.value } : {}),
+      }),
     onSuccess: codeSent('verify'),
   })
   const verify = useMutation({ mutationFn: () => api.registerVerify({ email: sent?.sent_to ?? email, code }), onSuccess: done })
@@ -81,7 +88,7 @@ export default function AuthPage() {
   const passwordOk = form.password.length >= 8
   const valid = {
     sign_in: login.valid && !!form.password,
-    sign_up: !nameProblem(form.first) && !nameProblem(form.last) && emailValid(form.email) && passwordOk,
+    sign_up: !nameProblem(form.first) && !nameProblem(form.last) && emailValid(form.email) && phone.valid && passwordOk,
     verify: codeComplete(code),
     forgot: login.valid,
     reset: codeComplete(code) && passwordOk && form.confirm === form.password,
@@ -105,17 +112,17 @@ export default function AuthPage() {
       <WelcomeHero title={t('auth.hero_title')} subtitle={t('auth.private_note')} />
 
       <Card className="animate-fade-up rounded-3xl p-6 shadow-[var(--shadow-lift)] sm:p-9">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-[1.65rem] font-bold tracking-tight text-slate-900">{t(title)}</h2>
+        <div className="mb-6 flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">{t(title)}</h2>
             <p className="mt-1 text-sm text-slate-500">{t(sub)}</p>
           </div>
-          <LanguageSwitcher className="w-36 shrink-0" />
+          <LanguageSwitcher className="w-40 shrink-0 self-end sm:w-36 sm:self-auto" />
         </div>
 
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
           {mode === 'sign_up' && (
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <label className="block">
                 <Label>{t('auth.first_name')}</Label>
                 <Input value={form.first} maxLength={50} onChange={(e) => set('first')(e.target.value)} autoComplete="given-name" autoFocus />
@@ -140,6 +147,13 @@ export default function AuthPage() {
                 {t('auth.email_hint')}
               </FieldMessage>
             </label>
+          )}
+          {mode === 'sign_up' && (
+            <div>
+              <Label>{t('auth.phone_optional')}</Label>
+              <PhoneInput value={phone.value} onChange={setPhone} showErrors={tried} />
+              {!phone.value && <FieldMessage>{t('auth.phone_hint')}</FieldMessage>}
+            </div>
           )}
           {(mode === 'sign_in' || mode === 'sign_up') && (
             <div>

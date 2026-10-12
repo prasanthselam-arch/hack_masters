@@ -119,7 +119,7 @@ export default function Dashboard() {
             )}
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader icon={<Activity className="h-5 w-5" />} title={t('dashboard.abnormal_title')} />
               {p.abnormal_latest.length === 0 ? (
@@ -254,14 +254,14 @@ function Hero({ name, lastRecord, stats }: { name: string; lastRecord: string | 
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/upload">
+        <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap">
+          <Link to="/upload" className="[&>button]:w-full">
             <Button className="bg-none bg-white text-ink-900 shadow-[0_10px_30px_-10px_rgb(255_255_255/0.5)] hover:bg-brand-50">
               <Upload className="h-4 w-4" />
               {t('dashboard.upload_cta')}
             </Button>
           </Link>
-          <Link to="/chat">
+          <Link to="/chat" className="[&>button]:w-full">
             <Button variant="ghost" className="bg-white/[0.08] text-white ring-1 ring-white/15 hover:bg-white/15 hover:text-white">
               <MessageCircleHeart className="h-4 w-4" />
               {t('dashboard.ask_cta')}
@@ -274,13 +274,13 @@ function Hero({ name, lastRecord, stats }: { name: string; lastRecord: string | 
         <div className="relative grid grid-cols-2 gap-px border-t border-white/[0.08] bg-white/[0.06] md:grid-cols-4">
           {stats.map((s) => {
             const body = (
-              <div className="group flex h-full items-center gap-3 bg-ink-900/80 px-5 py-4 transition-colors hover:bg-ink-800/80 sm:px-6">
-                <span className={`rounded-xl bg-gradient-to-br ${s.tone} p-2.5 text-white shadow-lg ring-1 ring-white/20`}>{s.icon}</span>
+              <div className="group flex h-full items-center gap-3 bg-ink-900/80 px-4 py-4 transition-colors hover:bg-ink-800/80 sm:px-6">
+                <span className={`shrink-0 rounded-xl bg-gradient-to-br ${s.tone} p-2.5 text-white shadow-lg ring-1 ring-white/20`}>{s.icon}</span>
                 <div className="min-w-0">
                   <p className="font-display text-2xl font-bold tabular-nums">{s.value}</p>
-                  <p className="truncate text-xs text-slate-400 group-hover:text-slate-300">{s.label}</p>
+                  <p className="line-clamp-2 text-xs leading-snug text-slate-400 group-hover:text-slate-300 sm:truncate">{s.label}</p>
                 </div>
-                {s.to && <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-slate-300" />}
+                {s.to && <ArrowRight className="ml-auto hidden h-4 w-4 shrink-0 text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-slate-300 sm:block" />}
               </div>
             )
             return s.to ? (
@@ -337,7 +337,7 @@ function VerifyEmailBanner() {
           <p className="text-sm text-sky-900/80">{t('email.banner_body')}</p>
         </div>
       </div>
-      <Link to="/profiles#email">
+      <Link to="/account#email">
         <Button size="sm">
           {t('email.banner_action')}
           <ArrowRight className="h-4 w-4" />

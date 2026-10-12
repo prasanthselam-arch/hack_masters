@@ -148,7 +148,7 @@ export default function Chat() {
   const firstName = patient.name.split(' ')[0]
 
   return (
-    <div className="flex h-[calc(100dvh-12rem)] flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-11rem)]">
+    <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col lg:h-[calc(100dvh-11rem)]">
       <div className="mb-4 flex items-start justify-between gap-3 lg:mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{t('chat.title')}</h1>
@@ -182,20 +182,20 @@ export default function Chat() {
       </div>
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="scrollbar-thin flex-1 overflow-y-auto bg-gradient-to-b from-slate-50/60 to-white">
-          <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-3xl space-y-6 px-4 py-5 sm:px-6 sm:py-6">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center pt-6 text-center sm:pt-12">
-                <div className="hc-logo rounded-2xl bg-gradient-to-br from-brand-400 via-brand-600 to-brand-800 p-4 text-white shadow-[var(--shadow-glow)]">
-                  <MessageCircleHeart className="h-7 w-7" />
+              <div className="flex flex-col items-center pt-1 text-center sm:pt-12">
+                <div className="hc-logo rounded-2xl bg-gradient-to-br from-brand-400 via-brand-600 to-brand-800 p-3 text-white shadow-[var(--shadow-glow)] sm:p-4">
+                  <MessageCircleHeart className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h2 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">{t('chat.greeting', { name: firstName })}</h2>
+                <h2 className="mt-4 text-xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-2xl">{t('chat.greeting', { name: firstName })}</h2>
                 <p className="mt-1.5 max-w-md text-sm text-slate-500">{t('chat.subtitle')}</p>
-                <div className="mt-7 grid w-full gap-2.5 sm:grid-cols-2">
+                <div className="mt-5 grid w-full gap-2 sm:mt-7 sm:grid-cols-2 sm:gap-2.5">
                   {SUGGESTIONS.map(({ key, icon: Icon }) => (
                     <button
                       key={key}
                       onClick={() => send(t(`chat.${key}`))}
-                      className="group flex items-start gap-3 rounded-2xl bg-white px-4 py-3.5 text-left text-sm text-slate-700 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.07] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] hover:ring-brand-300"
+                      className="group flex items-start gap-3 rounded-2xl bg-white px-4 py-3 text-left sm:py-3.5 text-sm text-slate-700 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.07] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] hover:ring-brand-300"
                     >
                       <span className="rounded-lg bg-brand-50 p-1.5 text-brand-600 transition-colors group-hover:bg-brand-100">
                         <Icon className="h-4 w-4" />

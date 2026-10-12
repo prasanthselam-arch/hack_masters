@@ -40,6 +40,54 @@ def test_sign_up_takes_an_email_and_a_first_and_last_name(engine, local_mail):
     assert "already exists" in other.post(START, json={**body, "email": "ravi@example.com"}).json()["detail"]
 
 
+def test_sign_in_with_the_email_or_the_mobile_number(engine):
+    c = TestClient(app)
+    body = {"first_name": "Meena", "last_name": "Iyer", "email": "meena@example.com", "password": "secret-pass"}
+    assert "10 digits" in c.post(START, json={**body, "phone": "12"}).json()["detail"]
+    code = c.post(START, json={**body, "phone": "+91 98480 22338"}).json()["dev_code"]
+    me = c.post(VERIFY, json={"email": "meena@example.com", "code": code}).json()
+    assert me["login"] == "meena@example.com" and me["phone"] == "+919848022338"
+
+    def sign_in(login, password="secret-pass"):
+        return TestClient(app).post("/api/auth/login", json={"login": login, "password": password}).status_code
+
+    assert sign_in("meena@example.com") == sign_in("9848022338") == sign_in("+91 98480 22338") == 200
+    assert sign_in("9848022338", "wrong-pass") == 401
+    other = {**body, "email": "other@example.com"}
+    assert "mobile number already exists" in c.post(START, json={**other, "phone": "09848022338"}).json()["detail"]
+
+    # an account made without a number can add, change and remove one; the email keeps working throughout
+    t = TestClient(app)
+    t.post(VERIFY, json={"email": "other@example.com", "code": t.post(START, json=other).json()["dev_code"]}).raise_for_status()
+    assert "already uses" in t.patch("/api/auth/me", json={"phone": "9848022338"}).json()["detail"]
+    assert t.patch("/api/auth/me", json={"phone": "+44 7700 900123"}).json()["phone"] == "+447700900123"
+    assert sign_in("+447700900123") == 200
+    assert t.patch("/api/auth/me", json={"name": "Other Person"}).json()["phone"] == "+447700900123"  # untouched
+    assert t.patch("/api/auth/me", json={"phone": ""}).json()["phone"] is None
+    assert sign_in("+447700900123") == 401 and sign_in("other@example.com") == 200
+
+
+def test_accounts_that_sign_in_with_a_mobile_number_keep_it_as_their_phone(engine, monkeypatch):
+    from app import db as app_db
+
+    with Session(engine) as db:
+        db.add(Account(login="9123456780", name="Old Account", password_hash=auth.hash_password("secret-pass")))
+        db.commit()
+    monkeypatch.setattr(app_db, "engine", engine)
+    app_db._migrate_data()
+    c = TestClient(app)
+    me = c.post("/api/auth/login", json={"login": "9123456780", "password": "secret-pass"}).json()
+    assert me["login"] == me["phone"] == "+919123456780"
+    assert "Add and verify an email" in c.patch("/api/auth/me", json={"phone": ""}).json()["detail"]
+    me = c.patch("/api/auth/me", json={"phone": "9123456781"}).json()
+    assert me["login"] == me["phone"] == "+919123456781"
+
+    switched = _client("Ravi Kumar", "98765 43210")  # an email account that switched its sign-in to a number
+    assert switched.get("/api/auth/me").json()["phone"] == "+919876543210"
+    me = switched.patch("/api/auth/me", json={"phone": ""}).json()
+    assert me["phone"] is None and me["login"] == "9876543210@example.com"
+
+
 def test_codes_expire_and_resending_is_rate_limited(engine, monkeypatch):
     from app.services import codes
 

@@ -16,7 +16,7 @@ export function AuroraPage({ children }: { children: ReactNode }) {
         <div className="animate-float absolute -bottom-40 left-1/3 h-[26rem] w-[26rem] rounded-full bg-violet-300/20 blur-3xl [animation-delay:-9s]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(15_23_42/0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgb(15_23_42/0.035)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
       </div>
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-10 lg:min-h-screen lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-16">{children}</div>
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-7 px-4 pt-6 pb-8 sm:gap-10 sm:px-6 sm:py-10 lg:min-h-screen lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-16">{children}</div>
     </div>
   )
 }
@@ -27,10 +27,10 @@ export function WelcomeHero({ title, subtitle }: { title: string; subtitle: stri
   return (
     <div className="animate-fade-up flex flex-col justify-center">
       <Brand />
-      <h1 className="mt-8 text-4xl leading-[1.1] font-extrabold tracking-tight text-slate-900 lg:mt-12 lg:text-5xl">
+      <h1 className="mt-6 text-[2rem] leading-[1.1] font-extrabold tracking-tight text-slate-900 sm:mt-8 sm:text-4xl lg:mt-12 lg:text-5xl">
         <span className="text-gradient">{title}</span>
       </h1>
-      <p className="mt-4 max-w-lg text-slate-600 lg:text-lg">{subtitle}</p>
+      <p className="mt-3 max-w-lg text-slate-600 sm:mt-4 lg:text-lg">{subtitle}</p>
       <ul className="mt-10 hidden space-y-3 text-slate-700 lg:block">
         <Feature icon={<FileHeart className="h-5 w-5" />} text={t('upload.subtitle')} />
         <Feature icon={<Languages className="h-5 w-5" />} text={LANGUAGES.map((l) => l.label).join(' · ')} />

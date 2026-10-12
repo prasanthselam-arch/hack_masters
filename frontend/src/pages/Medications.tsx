@@ -42,7 +42,7 @@ export default function Medications() {
           <Empty icon={<Pill className="h-6 w-6" />} title={t('meds.empty')} />
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {list.map((m) => (
             <MedCard key={m.id} m={m} />
           ))}

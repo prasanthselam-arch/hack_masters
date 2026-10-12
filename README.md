@@ -1,275 +1,116 @@
-# Health Copilot: AI-powered personal health copilot
+<div align="center">
 
-Health Copilot turns photos and PDFs of prescriptions, lab reports and discharge summaries into a verified, unified
-health record. It explains abnormal values in plain language, in English, Hindi, Telugu, Tamil or Kannada, and
-exports everything as ABDM-ready FHIR R4 with a mock ABHA link.
+<img src="docs/banner.svg" alt="Health Copilot: your records, explained simply" width="100%">
 
-*Built for the Altrix Labs hackathon, "AI-Powered Personal Health Copilot".*
+**Your family's medical paperwork, read twice, checked by code and confirmed by you, then explained in your own language.**
+
+[![CI](https://github.com/prasanthselam-arch/health-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthselam-arch/health-copilot/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+![FHIR R4](https://img.shields.io/badge/FHIR-R4%20%C2%B7%20NRCeS-e34c26)
+![Languages](https://img.shields.io/badge/languages-EN%20%C2%B7%20HI%20%C2%B7%20TE%20%C2%B7%20TA%20%C2%B7%20KN-2ea44f)
+![Hosting](https://img.shields.io/badge/hosting-100%25%20free%20tier-8a2be2)
+
+[**Live demo**](https://health-copilot-kl7g.onrender.com) · [**Full documentation**](DOCUMENT.md) · [Architecture](docs/architecture.md) · [Slides](docs/slides.pdf) · [Demo script](docs/demo_script.md)
+
+</div>
+
+---
+
+Photograph a handwritten prescription, a Telugu lab report or a ten-page discharge summary. Health Copilot turns it
+into a verified, unified health record. It explains every abnormal value in plain English, Hindi, Telugu, Tamil or
+Kannada, answers questions with citations to the source documents, and exports everything as ABDM-ready FHIR R4.
+
+*Built for the Altrix Labs hackathon "AI-Powered Personal Health Copilot".*
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
+## What sets it apart
+
 | | |
 |---|---|
-| ![Review](docs/screenshots/review.png) | ![Hindi summary](docs/screenshots/docview_hi.png) |
-| Side-by-side review with confidence and verifier changes | Plain-language summary in Hindi |
-| ![Trends](docs/screenshots/trends.png) | ![ABHA](docs/screenshots/abha.png) |
-| Trends with reference ranges | Mock ABHA link and import, FHIR export |
+| **Two readers, one referee** | One model extracts, a *different* model re-reads the page, steered by the fields the validators found suspicious, and code arbitrates. Nothing is saved until a person confirms it on a side-by-side review screen. |
+| **AI reads, code decides** | High, Low and Critical flags, unit conversions, LOINC and ICD-10 codes and medicine schedules come from a curated knowledge base (60 lab tests, 213 Indian drug brands, dosage shorthand such as `1-0-1 AC`), never from the model. |
+| **Measured, not claimed** | Re-scorable eval suite: **100% of 477 fields** correct with verification, 99.8% in a single pass, across printed, handwritten, phone-photo, PDF and four Indian scripts. See [`eval/report.md`](eval/report.md). |
+| **Safe by construction** | Summaries can only use numbers that are in the record; dosing advice and diagnoses are blocked; critical values and emergency symptoms escalate to a doctor or 112. Models never see names, phone numbers or ABHA IDs. |
+| **ABDM-native** | Every document becomes an NRCeS-profile FHIR R4 bundle, readable in the app with the JSON one click away. Includes a mock ABHA link with OTP, a consent artefact and import from a mock Health Information Provider. |
+| **Zero-cost production** | Runs live on free tiers only: Render (Docker), a private GitHub repo as the durable datastore, Gmail through Apps Script for codes and alerts, and GitHub Actions for gated deploys and the daily reminder job. |
 
-## What it does
+<table>
+  <tr>
+    <td><img src="docs/screenshots/review.png" alt="Review"><br><sub>Side-by-side review with confidence and verifier changes</sub></td>
+    <td><img src="docs/screenshots/docview_hi.png" alt="Hindi summary"><br><sub>Plain-language summary in Hindi</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/trends.png" alt="Trends"><br><sub>Trends against reference ranges</sub></td>
+    <td><img src="docs/screenshots/chat_te.png" alt="Telugu chat"><br><sub>Cited answers in Telugu, with voice</sub></td>
+  </tr>
+</table>
 
-- **Ingest:** drag and drop, or use the phone camera. PDF, JPG, PNG and WEBP are accepted, multi-page documents
-  included. Printed, handwritten, bilingual and regional-script documents all work.
-- **Extract:** medicines with strength, dose, a morning/afternoon/night schedule, meal timing and duration; test
-  values with units and reference ranges; diagnoses with ICD-10 codes; vitals; dates; doctor and facility.
-- **Verify:**
-  - A second model re-reads the page, guided by the validators' suspicious fields.
-  - Code checks units, ranges, flags, drug names, dosage grammar, dates and plausibility.
-  - A person confirms every document on a side-by-side review screen before anything is saved.
-- **Explain:** plain-language summaries that cover what each abnormal result may mean, questions to ask the doctor,
-  the medicine schedule and a glossary. They pass safety checks: no dosing advice, no diagnosis, and every number
-  must come from the record. They are translated with all numbers preserved.
-- **Unified profile:** dashboard, timeline, trends with shaded reference ranges, active and past medicines, and
-  critical-value banners.
-- **Ask my records:** chat grounded only in the patient's own records, with citations and emergency detection.
-- **ABDM readiness:**
-  - Every document becomes an NRCeS-profile FHIR R4 bundle, and the whole record exports as one bundle.
-  - Mock ABHA flow: link with OTP, consent artefact, and import from a mock Health Information Provider.
+## How it works
 
-**Measured accuracy** ([`eval/report.md`](eval/report.md)): on 10 synthetic documents with 96 items, the pipeline
-with verification got 100% of 477 checked fields right; the single pass got 99.8%. The test set covers printed,
-handwritten, phone-photo, PDF, Hindi, Telugu, Tamil and Kannada documents. This is a regression suite, not a
-clinical validation; see the report for caveats.
+```mermaid
+flowchart LR
+  A[Photo or PDF] --> B[Preprocess] --> C[Classify] --> D[Extract<br/>model 1]
+  D --> E{Validate<br/>in code}
+  E --> F[Verify<br/>model 2] --> G[Human review] --> H[(Unified record)]
+  H --> I[FHIR R4 bundles]
+  H --> J[Summaries and cited chat]
+  H --> K[Reminders and weekly email]
+```
 
-Docs: [architecture](docs/architecture.md) · [slides](docs/slides.md) ([PDF](docs/slides.pdf)) · [3-minute demo script](docs/demo_script.md)
+**Stack:** FastAPI · SQLModel · Gemini (OpenAI optional) with per-role model fallback chains · React 19 · Vite ·
+TypeScript · Tailwind CSS 4 · TanStack Query · i18next · Docker · GitHub Actions.
 
-## Quick start (local development)
+<img src="docs/screenshots/mobile.png" alt="Phone view" width="230" align="right">
 
-Requirements: Python 3.12, Node 22, and a [Gemini API key](https://aistudio.google.com/apikey). OpenAI also works.
+Family accounts hold several profiles, each with its own records. Sign in with your email or mobile number; sign-up is
+verified by email, and every new device and password change triggers a security alert.
+
+On a phone it gets a bottom tab bar and installs to the home screen like an app. Uploads can be deleted before
+they're reviewed, and nothing reaches the record until you confirm it.
+
+<br clear="right">
+
+## Run it
 
 ```bash
-# backend
-cd backend
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-cp .env.example .env            # then put your key in GEMINI_API_KEY
-.venv/bin/uvicorn app.main:app --port 8000 --reload --reload-dir app
-
-# frontend (second terminal)
-cd frontend
-npm install
-npm run dev                     # http://localhost:5173 (proxies /api to :8000)
+git clone https://github.com/prasanthselam-arch/health-copilot.git && cd health-copilot
+./run.sh setup     # installs what's missing and creates backend/.env: add GEMINI_API_KEY there
+./run.sh start     # http://localhost:5173
 ```
 
-Or use the control script, which runs both servers in the background with logs in `.run/`:
+To load a demo family with a year of records, run `backend/.venv/bin/python scripts/seed_demo.py`, then sign in as
+`demo@healthcopilot.in` with the password `demo12345`.
 
-`setup` also installs what the system is missing, as far as possible without touching the system:
+To deploy your own copy for free, follow [DOCUMENT.md § 6](DOCUMENT.md#6-deploying-for-free-on-render).
 
-- **Node 22:** uses an existing Node 20.19+/22.12+ (including nvm or volta installs); otherwise downloads the
-  official build from nodejs.org into `.tools/node`.
-- **Python 3.11–3.13 with venv:** uses the system Python; otherwise installs [uv](https://docs.astral.sh/uv/) in
-  `~/.local/bin` and uses a standalone Python 3.12.
-- **lsof, curl, python3-venv:** installed with apt when missing (asks for your sudo password).
+## Documentation
 
-It also works with `sudo ./run.sh setup`: only the apt packages are installed as root, and the project files stay
-owned by you.
+[DOCUMENT.md](DOCUMENT.md) covers everything else:
 
-```bash
-./run.sh setup                 # first time: system packages, virtualenv, pip and npm install, backend/.env
-./run.sh start                 # backend :8000 + frontend :5173
-./run.sh status
-./run.sh restart [backend|frontend]
-./run.sh logs [backend|frontend]
-./run.sh stop
-HOST=0.0.0.0 ./run.sh start    # open from a phone on the same Wi-Fi (camera upload)
-```
+- [features](DOCUMENT.md#1-features-in-detail) and the [pipeline](DOCUMENT.md#2-how-the-pipeline-works);
+- [local setup](DOCUMENT.md#3-running-locally), including Docker and corporate proxies;
+- [accounts and email](DOCUMENT.md#4-accounts-email-codes-and-notifications);
+- [deployment](DOCUMENT.md#6-deploying-for-free-on-render) and [configuration](DOCUMENT.md#7-configuration-reference);
+- [tests](DOCUMENT.md#8-tests-and-evaluation), the [project layout](DOCUMENT.md#9-project-layout) and
+  [safety and privacy](DOCUMENT.md#10-safety-privacy-and-security).
 
-After a `git pull`, just run `./run.sh restart`: start and restart first install any packages added to
-`backend/requirements.txt` or `frontend/package-lock.json` since the last install.
+> [!IMPORTANT]
+> Health Copilot is a prototype, not a medical device. It does not diagnose or advise on treatment. Always consult a
+> qualified doctor.
 
-### Accounts
+## Authors
 
-Anyone can create an account with their first and last name, an email address and a password. After signing up, the
-sign-in can be switched to a mobile number (any of 20 countries, India by default) in the account settings. Each account sees
-only its own profiles and documents, and can hold several profiles, for example parents or children. Requests for
-another account's records return 404. Sessions use an HttpOnly cookie (30 days), passwords are stored as scrypt
-hashes, and repeated wrong passwords are throttled.
+| | Role |
+|---|---|
+| **Prasanth Selam** · [prasanth.selam@gmail.com](mailto:prasanth.selam@gmail.com) · [@prasanthselam-arch](https://github.com/prasanthselam-arch) | Lead developer |
+| **Hemanth Selam** · [hemanth.selam@gmail.com](mailto:hemanth.selam@gmail.com) | Co-developer |
 
-Every new account verifies its email with a 6-digit code before it is created (free SMS isn't available, so mobile
-numbers aren't verified by text). The email is used to reset a forgotten password and,
-if the user keeps them on, for security alerts (new sign-in, password or email changed), medicine-course reminders and
-a weekly summary. Codes expire after 10 minutes, allow 5 tries, and at most 5 can be sent to an email per hour.
-Accounts created before this see a reminder on the dashboard to add an email. Locally, without an email provider,
-the code is shown on screen instead of being emailed.
+## License
 
-To load a demo account (`demo@healthcopilot.in`, password `demo12345`) with a patient, an ABHA link and a year of
-records (no LLM calls needed):
+Copyright 2026 Prasanth Selam and Hemanth Selam.
 
-```bash
-backend/.venv/bin/python scripts/seed_demo.py
-# optionally also run real documents through the pipeline:
-backend/.venv/bin/python scripts/seed_demo.py --confirm lab_diabetes_lipid_pdf,rx_handwritten_diabetes --review rx_handwritten_photo
-# use your own account instead:
-backend/.venv/bin/python scripts/seed_demo.py --login you@example.com --password '...'
-```
-
-The demo ABHA OTP is `123456`.
-
-Profiles created before accounts existed have no owner and are hidden. Give them to an account with:
-
-```bash
-cd backend && .venv/bin/python -m app.manage accounts                      # list accounts and profiles
-cd backend && .venv/bin/python -m app.manage assign-orphans demo@healthcopilot.in
-```
-
-### Docker
-
-```bash
-cp backend/.env.example backend/.env   # add your key
-docker-compose up --build              # http://localhost:8080 (Postgres + backend + nginx frontend)
-```
-
-### Behind a TLS-inspecting corporate proxy
-
-If HTTPS calls fail with certificate errors, for example behind Zscaler:
-
-- **Backend:** point `CA_BUNDLE` in `backend/.env` at a PEM file that contains the system CAs plus the proxy's root CA.
-- **npm:** set `NODE_EXTRA_CA_CERTS=/path/to/proxy-root.pem`.
-
-## Deploy to Render (free)
-
-Everything runs on free plans: a Render free web service, plus a **private GitHub repository** that keeps the
-accounts, health records and uploaded files. A free Render service has no persistent disk: it forgets everything when
-it restarts, redeploys or sleeps after 15 minutes without traffic. So at start-up the app restores its SQLite database
-and files from that repository, and pushes a snapshot back about a minute after anything changes and again when it
-shuts down. Each day keeps one commit, so the repository also gives you a daily history.
-
-1. **Create the data repository.** On GitHub, create a new **private**, empty repository, for example
-   `your-name/health-copilot-data` (no README or licence).
-2. **Create a token for it.** In GitHub **Settings → Developer settings → Personal access tokens → Fine-grained
-   tokens**, generate a token with **Repository access: Only select repositories** (pick the data repository) and
-   **Permissions → Contents: Read and write**. Choose an expiry date and put a reminder in your calendar to renew it.
-3. **Create the service.** In Render, choose **New → Blueprint**, connect this GitHub repository and pick the
-   `main` branch. Render reads `render.yaml` and asks for:
-   - `GEMINI_API_KEY`: your Gemini API key;
-   - `DATA_REPO`: the data repository as `owner/name`, for example `your-name/health-copilot-data`;
-   - `DATA_REPO_TOKEN`: the token from step 2.
-4. **Deploy.** The first build takes a few minutes. The site is then at `https://health-copilot-<id>.onrender.com`,
-   and every push to `main` redeploys it once the GitHub Actions checks (`.github/workflows/ci.yml`: backend
-   tests, frontend lint and build) pass. A push that fails them is not deployed; the live site keeps running.
-
-**Email (sign-up codes, password reset, alerts).** Emails are sent from your own Gmail by a small Google Apps Script
-web app (free, about 100 emails a day). Render's free plan blocks SMTP, so the app reaches the script over HTTPS:
-
-1. In Render, open the service's **Environment** tab and copy the generated `GOOGLE_SCRIPT_SECRET` value.
-2. Signed in to the Gmail account that should send the emails, open [script.google.com](https://script.google.com),
-   choose **New project**, replace the code with [`scripts/google-apps-script/Code.gs`](scripts/google-apps-script/Code.gs)
-   and save.
-3. Open **Project Settings** (gear icon) → **Script properties** → **Add script property**: name `SECRET`, value
-   from step 1. Save.
-4. **Deploy → New deployment**, pick type **Web app**, set **Execute as: Me** and **Who has access: Anyone**, then
-   **Deploy**. Allow access when Google asks (it's your own script: **Advanced → Go to … (unsafe)** is expected).
-   Copy the **Web app URL** (it ends in `/exec`).
-5. Back in Render's **Environment** tab, add `GOOGLE_SCRIPT_URL` with that URL and save.
-
-Until this is done, the live site can't send codes, so sign-up and password reset show "Email isn't set up on this
-server yet". If you edit the script later, use **Deploy → Manage deployments → Edit → New version** so the URL stays
-the same.
-
-**Daily reminders and weekly summaries.** A sleeping free service runs no timers, so the scheduled GitHub Action
-`.github/workflows/notify.yml` wakes it every day at 9 AM IST and runs the job. To turn it on, copy the
-`CRON_SECRET` value Render generated (service **Environment** tab) and, in this GitHub repository's **Settings →
-Secrets and variables → Actions**, add it as the secret `CRON_SECRET` and add the variable `APP_URL` with the site's
-address (for example `https://health-copilot-kl7g.onrender.com`). Run it once by hand from the **Actions** tab to
-check. GitHub pauses scheduled workflows after 60 days without commits; re-enable it from the Actions tab if that happens.
-
-Good to know:
-
-- The token is passed to git through environment variables only. It is never written to a URL, a file or the logs.
-- If the data repository can't be read at start-up (wrong name, expired token), the app still starts but stops
-  syncing, so an empty instance can never overwrite your data. The Render logs say so; fix the variable and redeploy.
-- The first visit after the service has slept takes about a minute while Render starts it again.
-- A change made in the last minute before a crash (not a normal stop) can be lost. Normal stops, redeploys and sleep
-  always push a final snapshot.
-- Keep the data repository private: it contains everyone's health records.
-- GitHub warns about repositories over 1 GB and rejects files over 100 MB, which is far beyond a demo's needs.
-
-## Configuration (`backend/.env`)
-
-| Variable | Default | Notes |
-|---|---|---|
-| `LLM_PROVIDER` | `gemini` | `gemini` or `openai` |
-| `GEMINI_API_KEY` / `OPENAI_API_KEY` | — | Required for extraction, summaries and chat |
-| `GEMINI_EXTRACT_MODELS`, `GEMINI_VERIFY_MODELS`, `GEMINI_FAST_MODELS` | see `.env.example` | Comma-separated fallback chains per role. The first available model wins; quota or overload errors move to the next. Verification starts on a different model from extraction. |
-| `ENABLE_VERIFICATION` | `true` | Turns the second-model read on or off |
-| `DATABASE_URL` | SQLite in `backend/data` | e.g. `postgresql+psycopg://…` |
-| `CA_BUNDLE` | — | Custom CA bundle for TLS-inspecting proxies |
-| `SESSION_DAYS` | `30` | How long a sign-in lasts |
-| `COOKIE_SECURE` | `false` | Set `true` when served over HTTPS |
-| `STATIC_DIR` | — | Folder with the built frontend; the API then serves the website too (set in the `Dockerfile`) |
-| `DATA_REPO` / `DATA_REPO_TOKEN` | — | Private GitHub repository (`owner/name`) and fine-grained token that keep the data; see [Deploy to Render](#deploy-to-render-free) |
-| `DATA_REPO_BRANCH` | `main` | Branch for the data snapshots |
-| `DATA_SYNC_SECONDS` | `60` | How often to check for changes to push |
-| `GOOGLE_SCRIPT_URL` / `GOOGLE_SCRIPT_SECRET` | — | Google Apps Script web app that sends the emails, and its shared secret. Without a URL, local http:// servers show codes on screen; HTTPS servers refuse to send |
-| `MAIL_FROM_NAME` | `Health Copilot` | Sender name on emails |
-| `APP_URL` | Render's address, else `http://localhost:5173` | Used for links in emails |
-| `CRON_SECRET` | — | Lets the daily GitHub Action run reminders and weekly summaries |
-
-The **Gemini free tier allows only about 20 requests per model per day**. One document uses 3 requests (classify,
-extract, verify), and each summary or chat answer uses one or two more. For demos and evaluation runs, use a key with
-billing enabled.
-
-## Tests and evaluation
-
-```bash
-cd backend && .venv/bin/python -m pytest -q        # 93 unit tests: validators, knowledge base, FHIR, ABHA, safety, records, data sync, email codes
-backend/.venv/bin/python eval/make_samples.py      # regenerate the 10 synthetic documents + ground truth (deterministic)
-backend/.venv/bin/python eval/run_eval.py         # run the pipeline on all samples and write eval/report.md (about 30 LLM calls)
-backend/.venv/bin/python eval/run_eval.py --rescore eval/runs/<run>   # re-score saved outputs without LLM calls
-backend/.venv/bin/python scripts/e2e_smoke.py      # end-to-end API check against a running backend (about 6 LLM calls)
-```
-
-## Project layout
-
-```
-backend/app/
-  pipeline/    preprocess (PDF render, text layer, deskew, CLAHE) · extract (classify/extract/verify) · validate · runner · llm
-  knowledge/   lab_ranges.json (60 LOINC tests) · drugs_india.csv (213 brands) · dosage_terms.json · icd10.json · mock HIP records
-  fhir/        mapper (NRCeS profiles) · bundle (document bundles, patient export, FHIR import)
-  services/    records (confirm + medicine reconciliation) · summary · chat · facts · safety · abha_mock
-  api/         patients · documents · insights (summary, chat, ABHA)
-  models/      SQLModel tables shaped like FHIR resources
-frontend/src/  pages (Dashboard, Upload, Review, DocumentView, Timeline, Trends, Medications, Chat, Abha) · components · i18n (en, hi, te, ta, kn)
-eval/          make_samples.py · samples/ (documents + ground truth) · run_eval.py · report.md · notes.md
-scripts/       seed_demo.py · e2e_smoke.py
-docs/          architecture.md (+ PNG diagrams) · slides.md / slides.pdf · demo_script.md · screenshots/
-```
-
-## Safety notes
-
-- **This is a prototype, not a medical device.** It does not diagnose and never suggests changing medicines. Every
-  screen shows a disclaimer. Critical values show a "contact a doctor or seek urgent care" banner, and emergency
-  symptoms in chat show the 112 notice.
-- **Code decides what is abnormal.** High, Low and Critical flags, unit conversions, codes and schedules are computed
-  deterministically. The AI explains them and writes prose only.
-- **Nothing is saved without human confirmation.** Low-confidence, disputed and verifier-added items are highlighted
-  for review.
-- **Privacy:**
-  - Records stay in the local database.
-  - Page images go to the configured LLM provider for extraction.
-  - Summaries and chat receive fact sheets with gender, age and clinical facts only: no name, phone number or ABHA
-    identifier.
-  - Each account sees only its own records. *Delete account* (API: `POST /api/auth/delete-account`) removes the
-    account, its profiles, records and uploaded files.
-  - For production you would also need encryption at rest, HTTPS (`COOKIE_SECURE=true`), and a provider agreement
-    that meets the DPDP Act.
-
-## Security
-
-- API keys belong only in `backend/.env`, which is gitignored. Never commit them.
-- **Rotate any key that has been shared in chat or screenshots,** and set a usage limit on the provider dashboard.
-
-## Credits and licences
-
-- The synthetic handwriting samples use [Kalam](https://fonts.google.com/specimen/Kalam) and
-  [Caveat](https://fonts.google.com/specimen/Caveat) (SIL Open Font License 1.1), which are bundled in `eval/fonts/`.
-- Reference ranges and drug data are curated for demonstration. Verify them before any clinical use.
-- FHIR profiles follow the [NRCeS ABDM implementation guide](https://nrces.in/ndhm/fhir/r4/).
+Licensed under the [Apache License, Version 2.0](LICENSE). Any redistribution, modified or not, must keep the
+[LICENSE](LICENSE) and [NOTICE](NOTICE) files, including the authors' copyright and attribution, and must state what
+was changed. The license grants no rights to the project's name or the authors' names. Bundled fonts and data
+sources keep their own licenses; see [credits](DOCUMENT.md#11-credits).

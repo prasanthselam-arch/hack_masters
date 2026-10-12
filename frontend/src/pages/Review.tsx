@@ -129,6 +129,30 @@ export default function Review() {
     mutationFn: () => api.reprocess(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['document', id] }),
   })
+  const del = useMutation({
+    mutationFn: () => api.deleteDocument(id),
+    onSuccess: async () => {
+      nav('/upload', { replace: true })
+      qc.removeQueries({ queryKey: ['document', id] })
+      qc.removeQueries({ queryKey: ['patientSummary', patient.id] })
+      await Promise.all(
+        [['documents', patient.id], ['profile', patient.id], ['timeline', patient.id], ['trends', patient.id], ['medications', patient.id]].map((k) =>
+          qc.invalidateQueries({ queryKey: k }),
+        ),
+      )
+    },
+  })
+  const deleteButton = (saved: boolean) => (
+    <Button
+      variant="danger"
+      size="sm"
+      loading={del.isPending}
+      onClick={() => window.confirm(t(saved ? 'docview.delete_confirm' : 'upload.delete_confirm')) && del.mutate()}
+    >
+      <Trash2 className="h-4 w-4" />
+      {t('common.delete')}
+    </Button>
+  )
 
   const update = <K extends ListKey>(key: K, itemId: string, changes: Partial<ItemOf<K>>, markDirty = true) => {
     setDraft((d) => (d ? { ...d, [key]: (d[key] as ItemOf<K>[]).map((it) => (it.id === itemId ? { ...it, ...changes, needs_review: false } : it)) } : d))
@@ -170,13 +194,16 @@ export default function Review() {
           <StageLabel stage={d.stage} status={d.status} />
         </div>
         {d.error && <p className="mt-3 text-sm text-red-600">{d.error}</p>}
-        {d.status === 'failed' && d.source === 'upload' && (
-          <Button className="mt-4" variant="secondary" loading={retry.isPending} onClick={() => retry.mutate()}>
-            <RefreshCw className="h-4 w-4" />
-            {t('upload.retry_btn')}
-          </Button>
-        )}
-        {retry.error && <div className="mt-3"><ErrorNote error={retry.error} /></div>}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {d.status === 'failed' && d.source === 'upload' && (
+            <Button variant="secondary" size="sm" loading={retry.isPending} onClick={() => retry.mutate()}>
+              <RefreshCw className="h-4 w-4" />
+              {t('upload.retry_btn')}
+            </Button>
+          )}
+          {deleteButton(false)}
+        </div>
+        {(retry.error || del.error) && <div className="mt-3"><ErrorNote error={retry.error ?? del.error} /></div>}
       </Card>
     )
   }
@@ -235,8 +262,10 @@ export default function Review() {
           <Badge className="h-8 px-3 text-sm">
             {t('review.avg_conf')} {Math.round(draft.stats.avg_confidence * 100)}%
           </Badge>
+          {deleteButton(d.status === 'confirmed')}
         </div>
       </div>
+      {del.error && <ErrorNote error={del.error} />}
 
       {d.status === 'confirmed' && (
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200">
@@ -245,9 +274,9 @@ export default function Review() {
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="lg:sticky lg:top-4 lg:h-[calc(100vh-7rem)]">
-          <div className="h-[60vh] lg:h-full">
+          <div className="h-[55svh] sm:h-[60vh] lg:h-full">
             <PageViewer pages={d.page_urls} fileUrl={d.file_url} page={page} onPage={setPage} />
           </div>
         </div>
@@ -261,7 +290,7 @@ export default function Review() {
 
           <Card>
             <CardHeader icon={<FileText className="h-5 w-5" />} title={t('review.doc_info')} />
-            <div className="grid gap-4 p-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
               <label>
                 <Label>{t('review.doc_type')}</Label>
                 <Select value={draft.document.doc_type} onChange={(e) => setDoc({ doc_type: e.target.value })}>
@@ -397,7 +426,7 @@ export default function Review() {
           >
             {draft.observations.map((o) => (
               <ItemShell key={o.id} flagged={o.needs_review} critical={o.critical}>
-                <div className="grid items-start gap-2 sm:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+                <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)_auto]">
                   <div className="min-w-0">
                     <Input className={cn(small, 'font-medium')} placeholder={t('review.test')} value={o.name} onChange={(e) => update('observations', o.id, { name: e.target.value, loinc: null })} />
                     <p className="mt-1 truncate text-xs text-slate-500">
@@ -450,7 +479,7 @@ export default function Review() {
           >
             {draft.conditions.map((c) => (
               <ItemShell key={c.id} flagged={c.needs_review}>
-                <div className="grid items-start gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto]">
+                <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto]">
                   <div className="min-w-0">
                     <Input className={cn(small, 'font-medium')} value={c.name} placeholder={t('review.name')} onChange={(e) => update('conditions', c.id, { name: e.target.value, icd10: null, icd10_display: null })} />
                     {c.name_raw && c.name_raw !== c.name && <p className="mt-1 truncate text-xs text-slate-500">“{c.name_raw}”</p>}
@@ -476,7 +505,7 @@ export default function Review() {
           {draft.encounter && (
             <Card>
               <CardHeader icon={<Hospital className="h-5 w-5" />} title={t('review.hospital_stay')} />
-              <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 <label>
                   <Label>{t('review.admitted')}</Label>
                   <Input type="date" value={draft.encounter.start_date ?? ''} onChange={(e) => setDraft({ ...draft, encounter: { ...draft.encounter!, start_date: e.target.value || null } })} />
@@ -532,11 +561,11 @@ export default function Review() {
             </Card>
           )}
 
-          <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-200 backdrop-blur">
+          <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-200 backdrop-blur lg:bottom-3">
             <p className={cn('text-sm', dirty ? 'text-amber-700' : 'text-slate-500')}>
               {dirty ? t('review.dirty') : pending > 0 ? t('review.needs_review', { count: pending }) : t('review.all_reviewed')}
             </p>
-            <div className="flex gap-2">
+            <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-2 sm:flex sm:w-auto">
               <Button variant="secondary" onClick={() => refresh.mutate(draft)} loading={refresh.isPending}>
                 <RefreshCw className="h-4 w-4" />
                 {t('review.recheck')}

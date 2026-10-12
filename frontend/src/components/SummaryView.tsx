@@ -50,7 +50,7 @@ export function SummaryView({ s }: { s: Summary }) {
 
       {s.abnormal.length > 0 && (
         <Section icon={<ClipboardList className="h-4 w-4" />} title={t('docview.abnormal')}>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {s.abnormal.map((a) => (
               <div key={a.record_id} className={`rounded-xl p-4 ring-1 ${a.critical ? 'bg-red-50/60 ring-red-200' : 'bg-amber-50/40 ring-amber-200/70'}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -128,7 +128,7 @@ export function SummaryView({ s }: { s: Summary }) {
         </Section>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {s.next_steps.length > 0 && (
           <Section icon={<CheckCircle2 className="h-4 w-4" />} title={t('docview.next_steps')}>
             <ul className="list-disc space-y-1 pl-5 text-slate-700">
@@ -151,7 +151,7 @@ export function SummaryView({ s }: { s: Summary }) {
 
       {s.glossary.length > 0 && (
         <Section icon={<BookOpen className="h-4 w-4" />} title={t('docview.glossary')}>
-          <dl className="grid gap-2 sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {s.glossary.map((g, i) => (
               <div key={i} className="rounded-lg bg-slate-50 px-3 py-2">
                 <dt className="text-sm font-medium text-slate-900">{g.term}</dt>

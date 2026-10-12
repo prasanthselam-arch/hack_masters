@@ -80,9 +80,8 @@ export default function DocumentView() {
               {d.source !== 'upload' && <Badge className="bg-brand-50 text-brand-700 ring-brand-200">{t('timeline.imported')}</Badge>}
               {d.handwritten && <Badge>{t('review.handwritten')}</Badge>}
               <span>{d.document_date ? fmtDate(d.document_date, lang) : t('timeline.date_unknown')}</span>
-              {d.facility && <span>· {d.facility}</span>}
-              {d.author && <span>· {d.author}</span>}
             </div>
+            {(d.facility || d.author) && <p className="mt-1 text-sm text-slate-500">{[d.facility, d.author].filter(Boolean).join(' · ')}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to={`/documents/${id}/review`}>
@@ -157,7 +156,7 @@ function Structured({ d }: { d: DocumentInfo }) {
   const r = d.review
   if (!r) return null
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       {r.observations.length > 0 && (
         <Card className="lg:col-span-2">
           <CardHeader title={t('review.results')} />
@@ -232,7 +231,7 @@ function Structured({ d }: { d: DocumentInfo }) {
       {d.pipeline_log.length > 0 && (
         <Card className="lg:col-span-2">
           <CardHeader title={t('docview.pipeline')} />
-          <ol className="grid gap-2 p-5 sm:grid-cols-3 lg:grid-cols-6">
+          <ol className="grid grid-cols-1 gap-2 p-5 sm:grid-cols-3 lg:grid-cols-6">
             {d.pipeline_log.map((l, i) => (
               <li key={i} className="rounded-lg bg-slate-50 px-3 py-2">
                 <p className="text-xs font-medium text-slate-700">{t(`upload.stage.${l.stage}`, { defaultValue: l.stage })}</p>

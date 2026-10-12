@@ -27,7 +27,7 @@ def _add_missing_columns() -> None:
     """create_all() does not alter existing tables; add columns introduced after a database was created."""
     added = {
         "patient": {"owner_id": ("VARCHAR", True), "relationship": ("VARCHAR", True)},
-        "account": {"email": ("VARCHAR", True), "email_verified_at": ("TIMESTAMP", False),
+        "account": {"email": ("VARCHAR", True), "email_verified_at": ("TIMESTAMP", False), "phone": ("VARCHAR", True),
                     "notify_security": ("BOOLEAN NOT NULL DEFAULT TRUE", False),
                     "notify_medicines": ("BOOLEAN NOT NULL DEFAULT TRUE", False),
                     "notify_weekly": ("BOOLEAN NOT NULL DEFAULT TRUE", False), "last_weekly_at": ("TIMESTAMP", False)},
@@ -57,6 +57,8 @@ def _migrate_data() -> None:
                     conn.execute(text(f"UPDATE {table} SET {col} = :v WHERE id = :id"), {"v": "+91" + digits, "id": row_id})
         # Accounts that sign in with an email use it for codes and alerts too (it still needs verifying).
         conn.execute(text("UPDATE account SET email = login WHERE email IS NULL AND login LIKE '%@%'"))
+        # Accounts that sign in with a mobile number keep it as their phone.
+        conn.execute(text("UPDATE account SET phone = login WHERE phone IS NULL AND login NOT LIKE '%@%'"))
         # Each account's first profile is the account holder's own.
         owners = conn.execute(text("SELECT DISTINCT owner_id FROM patient WHERE owner_id IS NOT NULL")).scalars().all()
         for owner in owners:

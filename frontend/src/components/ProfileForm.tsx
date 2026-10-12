@@ -122,11 +122,11 @@ export function ProfileForm({
         </div>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <label className="block">
           <Label>{t('onboarding.gender')}</Label>
           <Select value={v.gender ?? ''} onChange={(e) => setV({ ...v, gender: e.target.value || null })}>
-            <option value="">—</option>
+            <option value="">{t('onboarding.choose_gender')}</option>
             <option value="male">{t('onboarding.male')}</option>
             <option value="female">{t('onboarding.female')}</option>
             <option value="other">{t('onboarding.other')}</option>
@@ -147,7 +147,7 @@ export function ProfileForm({
         </label>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <Label>{t('onboarding.phone')}</Label>
           <PhoneInput

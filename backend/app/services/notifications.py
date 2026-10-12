@@ -64,7 +64,7 @@ def security_alert(email: str, name: str, event: str, *, device: str | None = No
     subject, paragraphs = texts[event]
     try:
         mailer.send(email, subject, paragraphs, button=("Reset password", _url("/?forgot=1")),
-                    footer="You get security alerts for your account. You can turn them off in Family & account.")
+                    footer="You get security alerts for your account. You can turn them off in Your account.")
     except mailer.MailError as e:
         log.warning("Security alert %s not sent: %s", event, e)
 
@@ -139,7 +139,7 @@ def run_daily(db: Session, now: datetime | None = None) -> dict[str, Any]:
                                  "Please check with your doctor before stopping, continuing or repeating a medicine.",
                                  NOT_ADVICE],
                                 button=("Open medicines", _url("/medications")),
-                                footer="You get medicine reminders. You can turn them off in Family & account.")
+                                footer="You get medicine reminders. You can turn them off in Your account.")
                     db.add_all(Notification(account_id=acc.id, key=k) for k in keys)
                     sent["medicines"] += 1
                 except mailer.MailError:
@@ -154,7 +154,7 @@ def run_daily(db: Session, now: datetime | None = None) -> dict[str, Any]:
                                 [f"Hi {acc.name}, here is your family's week in Health Copilot:", *lines,
                                  "Open the app for details, trends and plain-language explanations.", NOT_ADVICE],
                                 button=("Open Health Copilot", _url("/")),
-                                footer="You get a weekly summary. You can turn it off in Family & account.")
+                                footer="You get a weekly summary. You can turn it off in Your account.")
                     sent["weekly"] += 1
                 except mailer.MailError:
                     sent["failed"] += 1

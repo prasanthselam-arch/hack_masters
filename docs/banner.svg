@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="t d">
+  <title id="t">Health Copilot</title>
+  <desc id="d">Your family's medical paperwork, read twice, checked by code and confirmed by you, then explained in English, Hindi, Telugu, Tamil or Kannada.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06110f"/><stop offset="0.55" stop-color="#0b1f1c"/><stop offset="1" stop-color="#0a2a25"/>
+    </linearGradient>
+    <radialGradient id="glowA"><stop offset="0" stop-color="#22a78b" stop-opacity="0.55"/><stop offset="1" stop-color="#22a78b" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop offset="0" stop-color="#0ea5e9" stop-opacity="0.35"/><stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/></radialGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#45c2a5"/><stop offset="0.5" stop-color="#168672"/><stop offset="1" stop-color="#15554b"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7bdbc1"/><stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22a78b" stop-opacity="0"/><stop offset="0.85" stop-color="#22a78b" stop-opacity="0.22"/><stop offset="1" stop-color="#22a78b" stop-opacity="0.9"/>
+    </linearGradient>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" fill="#7bdbc1" fill-opacity="0.09"/></pattern>
+    <clipPath id="card"><rect width="340" height="250" rx="22"/></clipPath>
+    <clipPath id="frame"><rect width="1280" height="360" rx="24"/></clipPath>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Telugu', 'Noto Sans Tamil', 'Noto Sans Kannada', 'Nirmala UI', sans-serif; }
+    .title { font-size: 62px; font-weight: 800; letter-spacing: -1.5px; fill: #fff; }
+    .tag { font-size: 25px; font-weight: 500; fill: #b0ecd9; opacity: 0; animation: tag 15s infinite; }
+    .chip { opacity: 0; animation: rise .7s cubic-bezier(.22,1,.36,1) forwards; }
+    .chip-t { font-size: 15px; font-weight: 600; fill: #d7f6ec; }
+    .glow-a { animation: drift 14s ease-in-out infinite alternate; }
+    .glow-b { animation: drift 18s ease-in-out infinite alternate-reverse; }
+    .heart { transform-box: fill-box; transform-origin: center; animation: beat 1.6s ease-in-out infinite; }
+    .trace { stroke-dasharray: 100; animation: trace 2.4s linear infinite; }
+    .ecg { stroke-dasharray: 1400; animation: ecg 6s linear infinite; }
+    .float { animation: float 7s ease-in-out infinite; }
+    .beam { animation: scan 3.6s cubic-bezier(.45,0,.55,1) infinite; }
+    .flag { opacity: 0; animation: flag 3.6s infinite; }
+    .row-n { font-size: 15px; font-weight: 600; fill: #0b1f1c; }
+    .row-v { font-size: 15px; font-weight: 700; fill: #0b1f1c; }
+    .flag-t { font-size: 12px; font-weight: 700; }
+    .meta { font-size: 12px; font-weight: 600; fill: #64748b; letter-spacing: .6px; }
+    .doc { font-size: 17px; font-weight: 800; fill: #0b1f1c; }
+    .ok { font-size: 12px; font-weight: 700; fill: #156b5d; }
+    @keyframes tag { 0% { opacity: 0; transform: translateY(8px); } 3%, 18% { opacity: 1; transform: none; } 21%, 100% { opacity: 0; transform: translateY(-6px); } }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes drift { from { transform: translate(0, 0); } to { transform: translate(60px, 24px); } }
+    @keyframes beat { 0%, 40%, 100% { transform: scale(1); } 14% { transform: scale(1.1); } 26% { transform: scale(.97); } }
+    @keyframes trace { from { stroke-dashoffset: 100; } 60%, to { stroke-dashoffset: 0; } }
+    @keyframes ecg { from { stroke-dashoffset: 1400; } to { stroke-dashoffset: 0; } }
+    @keyframes float { 0%, 100% { transform: translate(870px, 58px) rotate(-3deg); } 50% { transform: translate(870px, 48px) rotate(-2deg); } }
+    @keyframes scan { 0% { transform: translateY(-90px); opacity: 0; } 8% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(250px); opacity: 0; } }
+    @keyframes flag { 0%, 12% { opacity: 0; transform: translateX(6px); } 20%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .tag, .chip, .glow-a, .glow-b, .heart, .trace, .ecg, .float, .beam, .flag { animation: none; }
+      .chip, .flag { opacity: 1; } .tag { opacity: 0; } .tag:first-of-type { opacity: 1; } .beam { opacity: 0; }
+      .float { transform: translate(870px, 58px) rotate(-3deg); }
+    }
+  </style>
+
+  <g clip-path="url(#frame)">
+  <rect width="1280" height="360" fill="url(#bg)"/>
+  <rect width="1280" height="360" fill="url(#dots)"/>
+  <circle class="glow-a" cx="140" cy="40" r="300" fill="url(#glowA)"/>
+  <circle class="glow-b" cx="1080" cy="340" r="320" fill="url(#glowB)"/>
+  <path class="ecg" d="M0 322 H330 l14 -22 18 44 16 -36 10 14 H700 l14 -22 18 44 16 -36 10 14 H1280" fill="none" stroke="#45c2a5" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="64" y="96" width="112" height="112" rx="30" fill="url(#tile)"/>
+  <rect x="64.5" y="96.5" width="111" height="111" rx="29.5" fill="none" stroke="#ffffff" stroke-opacity="0.25"/>
+  <g transform="translate(85.3 117.3) scale(2.9)" fill="none" stroke="#fff" stroke-linejoin="round">
+    <path class="heart" d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.9 4 7.4 4c2 0 3.5 1.1 4.6 2.7C13.1 5.1 14.6 4 16.6 4c3.5 0 5.8 3.6 4.6 7.1-1.7 4.8-9.2 9.4-9.2 9.4Z" fill="#fff" fill-opacity="0.18" stroke-width="1.6"/>
+    <path class="trace" pathLength="100" d="M2.5 12.5h5l1.6-3.2 2.4 6.4 2.1-5.1 1.3 1.9h6.6" stroke-width="1.9" stroke-linecap="round"/>
+  </g>
+
+  <text x="204" y="150" class="title">Health <tspan fill="url(#word)">Copilot</tspan></text>
+  <text x="208" y="200" class="tag" lang="en" style="animation-delay:0s">Your records, explained simply</text>
+  <text x="208" y="200" class="tag" lang="hi" style="animation-delay:3s">आपके रिकॉर्ड, आसान भाषा में</text>
+  <text x="208" y="200" class="tag" lang="te" style="animation-delay:6s">మీ రికార్డులు, సులభమైన భాషలో</text>
+  <text x="208" y="200" class="tag" lang="ta" style="animation-delay:9s">உங்கள் பதிவுகள், எளிய மொழியில்</text>
+  <text x="208" y="200" class="tag" lang="kn" style="animation-delay:12s">ನಿಮ್ಮ ದಾಖಲೆಗಳು, ಸರಳ ಭಾಷೆಯಲ್ಲಿ</text>
+  <g class="chip" style="animation-delay:0.50s">
+    <rect x="206" y="234" width="126" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#7bdbc1" stroke-opacity="0.35"/>
+    <circle cx="223" cy="251" r="3.5" fill="#45c2a5"/>
+    <text x="235" y="256.5" class="chip-t">Read twice</text>
+  </g>
+  <g class="chip" style="animation-delay:0.75s">
+    <rect x="342" y="234" width="169" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#7bdbc1" stroke-opacity="0.35"/>
+    <circle cx="359" cy="251" r="3.5" fill="#45c2a5"/>
+    <text x="371" y="256.5" class="chip-t">Checked by code</text>
+  </g>
+  <g class="chip" style="animation-delay:1.00s">
+    <rect x="521" y="234" width="178" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#7bdbc1" stroke-opacity="0.35"/>
+    <circle cx="538" cy="251" r="3.5" fill="#45c2a5"/>
+    <text x="550" y="256.5" class="chip-t">Confirmed by you</text>
+  </g>
+  <g class="chip" style="animation-delay:1.25s">
+    <rect x="709" y="234" width="160" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#7bdbc1" stroke-opacity="0.35"/>
+    <circle cx="726" cy="251" r="3.5" fill="#45c2a5"/>
+    <text x="738" y="256.5" class="chip-t">FHIR R4 &#183; ABDM</text>
+  </g>
+
+  <g class="float">
+    <rect x="6" y="14" width="340" height="250" rx="22" fill="#000" fill-opacity="0.35"/>
+    <g clip-path="url(#card)">
+      <rect width="340" height="250" fill="#f8fffd"/>
+      <rect width="340" height="4" fill="url(#word)"/>
+      <text x="24" y="44" class="doc">Lab report</text>
+      <text x="24" y="66" class="meta">CITY CARE LAB &#183; 26 MAR 2026</text>
+      <g transform="translate(232 30)">
+        <rect width="84" height="24" rx="12" fill="#22a78b" fill-opacity="0.14"/>
+        <text x="42" y="16.5" class="ok" text-anchor="middle">Verified</text>
+      </g>
+      <line x1="24" x2="316" y1="88" y2="88" stroke="#0b1f1c" stroke-opacity="0.1"/>
+    <line x1="24" x2="316" y1="133" y2="134" stroke="#0b1f1c" stroke-opacity="0.07"/>
+    <text x="24" y="120" class="row-n">HbA1c</text>
+    <text x="232" y="120" class="row-v" text-anchor="end">7.6 %</text>
+    <g class="flag" style="animation-delay:0.60s">
+      <rect x="269" y="105" width="47" height="21" rx="10.5" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-opacity="0.55"/>
+      <text x="292.5" y="119.5" class="flag-t" text-anchor="middle" fill="#f59e0b">High</text>
+    </g>
+    <line x1="24" x2="316" y1="168" y2="169" stroke="#0b1f1c" stroke-opacity="0.07"/>
+    <text x="24" y="155" class="row-n">LDL Cholesterol</text>
+    <text x="232" y="155" class="row-v" text-anchor="end">112 mg/dL</text>
+    <g class="flag" style="animation-delay:1.05s">
+      <rect x="269" y="140" width="47" height="21" rx="10.5" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-opacity="0.55"/>
+      <text x="292.5" y="154.5" class="flag-t" text-anchor="middle" fill="#f59e0b">High</text>
+    </g>
+    <line x1="24" x2="316" y1="203" y2="204" stroke="#0b1f1c" stroke-opacity="0.07"/>
+    <text x="24" y="190" class="row-n">Vitamin D</text>
+    <text x="232" y="190" class="row-v" text-anchor="end">18 ng/mL</text>
+    <g class="flag" style="animation-delay:1.50s">
+      <rect x="276" y="175" width="40" height="21" rx="10.5" fill="#38bdf8" fill-opacity="0.16" stroke="#38bdf8" stroke-opacity="0.55"/>
+      <text x="296.0" y="189.5" class="flag-t" text-anchor="middle" fill="#38bdf8">Low</text>
+    </g>
+    <line x1="24" x2="316" y1="238" y2="239" stroke="#0b1f1c" stroke-opacity="0.07"/>
+    <text x="24" y="225" class="row-n">HDL Cholesterol</text>
+    <text x="232" y="225" class="row-v" text-anchor="end">41 mg/dL</text>
+    <g class="flag" style="animation-delay:1.95s">
+      <rect x="255" y="210" width="61" height="21" rx="10.5" fill="#45c2a5" fill-opacity="0.16" stroke="#45c2a5" stroke-opacity="0.55"/>
+      <text x="285.5" y="224.5" class="flag-t" text-anchor="middle" fill="#45c2a5">Normal</text>
+    </g>
+      <rect class="beam" x="0" y="0" width="340" height="80" fill="url(#beam)"/>
+    </g>
+  </g>
+  </g>
+</svg>
