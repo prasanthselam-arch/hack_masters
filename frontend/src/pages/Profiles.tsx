@@ -9,7 +9,7 @@ import { LANGUAGES } from '@/i18n'
 import { api } from '@/lib/api'
 import { useLang, usePatient } from '@/lib/patient'
 import { formatPhone } from '@/lib/phone'
-import { ageOf } from '@/lib/utils'
+import { ageOf, relationshipLabel } from '@/lib/utils'
 import type { Patient } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/Avatar'
@@ -47,19 +47,15 @@ export default function Profiles() {
 
       <section>
         <SectionTitle icon={<Users className="h-4 w-4" />} title={t('profiles.family')} count={family.length} sub={t('profiles.family_sub')} />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-          {family.map((p) => (
-            <ProfileCard key={p.id} patient={p} index={indexOf(p)} />
-          ))}
-          <Link
-            to="/profiles/new"
-            className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center text-sm font-medium text-slate-500 transition-colors hover:border-brand-300 hover:bg-brand-50/50 hover:text-brand-700"
-          >
-            <UserPlus className="h-6 w-6" />
-            {t('profile.add')}
-            {family.length === 0 && <span className="max-w-64 text-xs font-normal text-slate-400">{t('profiles.family_empty')}</span>}
-          </Link>
-        </div>
+        {family.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            {family.map((p) => (
+              <ProfileCard key={p.id} patient={p} index={indexOf(p)} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400">{t('profiles.family_empty')}</p>
+        )}
       </section>
 
     </div>
@@ -149,7 +145,7 @@ function ProfileCard({ patient: p, index, isSelf = false }: { patient: Patient; 
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {p.relationship && (
               <Badge className={isSelf ? 'bg-brand-50 text-brand-800 ring-brand-200' : ''}>
-                {t(`relationship.${p.relationship}`)}
+                {relationshipLabel(p, t)}
               </Badge>
             )}
             {isActive && <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">{t('profiles.viewing')}</Badge>}

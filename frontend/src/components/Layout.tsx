@@ -1,5 +1,7 @@
 import {
   CalendarClock,
+  Check,
+  ChevronDown,
   ChevronsUpDown,
   Languages,
   LayoutDashboard,
@@ -8,7 +10,6 @@ import {
   LogOut,
   MessageCircleHeart,
   Moon,
-  MoreVertical,
   Pill,
   ShieldCheck,
   Sun,
@@ -23,7 +24,7 @@ import { useTranslation } from 'react-i18next'
 import { LANGUAGES } from '@/i18n'
 import { useAuth } from '@/lib/auth'
 import { useLang, usePatient } from '@/lib/patient'
-import { cn } from '@/lib/utils'
+import { cn, relationshipLabel } from '@/lib/utils'
 import { formatPhone } from '@/lib/phone'
 import { Avatar } from './Avatar'
 import { ThemeToggle } from './ThemeToggle'
@@ -91,7 +92,7 @@ function PatientSwitcher() {
   const { patients, patient, select } = usePatient()
   if (!patient) return null
   const index = patients.findIndex((p) => p.id === patient.id)
-  const label = (p: typeof patient) => (p.relationship ? `${p.name} · ${t(`relationship.${p.relationship}`)}` : p.name)
+  const label = (p: typeof patient) => (p.relationship ? `${p.name} · ${relationshipLabel(p, t)}` : p.name)
   return (
     <div className="relative rounded-2xl bg-gradient-to-br from-white/[0.09] to-white/[0.03] p-3 ring-1 ring-inset ring-white/10">
       <div className="flex items-center gap-3">
@@ -105,7 +106,7 @@ function PatientSwitcher() {
                 {patient.abha_address}
               </span>
             ) : (
-              [patient.relationship ? t(`relationship.${patient.relationship}`) : null, formatPhone(patient.phone)].filter(Boolean).join(' · ') ||
+              [relationshipLabel(patient, t), formatPhone(patient.phone)].filter(Boolean).join(' · ') ||
               t('profiles.viewing')
             )}
           </p>
@@ -126,45 +127,6 @@ function PatientSwitcher() {
           ))}
         </select>
       )}
-    </div>
-  )
-}
-
-/** Who is being viewed, as a compact pill in the phone header; a native select switches family members. */
-function MobilePatientPill() {
-  const { t } = useTranslation()
-  const { patients, patient, select } = usePatient()
-  if (!patient) return null
-  const index = patients.findIndex((p) => p.id === patient.id)
-  const pill = (
-    <>
-      <Avatar name={patient.name} index={index} className="h-7 w-7 text-[11px]" />
-      <span className="hidden max-w-[5.5rem] truncate text-sm font-semibold text-slate-800 min-[430px]:block">{patient.name.split(' ')[0]}</span>
-      {patients.length > 1 && <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
-    </>
-  )
-  const cls = 'relative flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-white pr-2 pl-1.5 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.08]'
-  if (patients.length < 2)
-    return (
-      <Link to="/profiles" title={t('profiles.manage')} className={cls}>
-        {pill}
-      </Link>
-    )
-  return (
-    <div className={cls}>
-      {pill}
-      <select
-        aria-label={t('profiles.family')}
-        value={patient.id}
-        onChange={(e) => select(e.target.value)}
-        className="absolute inset-0 cursor-pointer opacity-0 [&_option]:text-slate-900"
-      >
-        {patients.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.relationship ? `${p.name} · ${t(`relationship.${p.relationship}`)}` : p.name}
-          </option>
-        ))}
-      </select>
     </div>
   )
 }
@@ -307,10 +269,12 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** Three-dot menu in the top-right corner: who is signed in, the account page, the family page and sign out. */
-function AccountMenu() {
+/** Name chip in the top-right corner that opens the account menu. On phones it shows the family member being viewed,
+ *  and the menu switches between them (the sidebar does that on desktop). */
+function AccountMenu({ phone = false }: { phone?: boolean }) {
   const { t } = useTranslation()
   const { account, signOut } = useAuth()
+  const { patients, patient, select } = usePatient()
   const { theme, toggle } = useTheme()
   const [open, setOpen] = useState(false)
   const [asking, setAsking] = useState(false)
@@ -332,6 +296,9 @@ function AccountMenu() {
   const login = account.login.startsWith('+') ? formatPhone(account.login) : account.login
   const item = 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors'
   const close = () => setOpen(false)
+  const shown = phone && patient ? patient : account
+  const shownIndex = phone && patient ? patients.findIndex((p) => p.id === patient.id) : 0
+  const switchable = phone && patients.length > 1
   return (
     <div ref={box} className="relative">
       <button
@@ -339,14 +306,16 @@ function AccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={t('account.menu')}
+        aria-label={`${t('account.menu')}: ${shown.name}`}
         title={t('account.menu')}
         className={cn(
-          'inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.08] transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none active:scale-95',
-          open && 'text-slate-900 ring-brand-300',
+          'inline-flex h-10 max-w-[11rem] shrink-0 items-center gap-1.5 rounded-xl bg-white pr-2 pl-1.5 text-slate-800 shadow-[var(--shadow-soft)] ring-1 ring-slate-900/[0.08] transition hover:ring-slate-900/[0.16] focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none active:scale-95',
+          open && 'ring-brand-300',
         )}
       >
-        <MoreVertical className="h-5 w-5" />
+        <Avatar name={shown.name} index={shownIndex} className="h-7 w-7 shrink-0 text-[11px]" />
+        <span className={cn('min-w-0 truncate text-sm font-semibold', phone && 'hidden min-[430px]:block')}>{shown.name.split(' ')[0]}</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
         <div role="menu" className="animate-fade-up absolute top-12 right-0 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-2 shadow-[var(--shadow-lift)] ring-1 ring-slate-900/[0.08]">
@@ -357,6 +326,33 @@ function AccountMenu() {
               <p className="truncate text-xs text-slate-500">{account.email ?? login}</p>
             </div>
           </div>
+          {switchable && (
+            <div className="border-t border-slate-100 py-2">
+              <p className="px-3 pb-1 text-[11px] font-semibold tracking-[0.12em] text-slate-400 uppercase">{t('profiles.viewing')}</p>
+              <div className="scrollbar-thin max-h-56 space-y-0.5 overflow-y-auto">
+                {patients.map((p, i) => (
+                  <button
+                    key={p.id}
+                    role="menuitemradio"
+                    aria-checked={p.id === patient?.id}
+                    type="button"
+                    onClick={() => {
+                      select(p.id)
+                      close()
+                    }}
+                    className={cn(item, 'py-2', p.id === patient?.id ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-50')}
+                  >
+                    <Avatar name={p.name} index={i} className="h-7 w-7 shrink-0 text-[11px]" />
+                    <span className="min-w-0 flex-1 truncate">
+                      {p.name}
+                      {p.relationship && <span className="text-slate-400"> · {relationshipLabel(p, t)}</span>}
+                    </span>
+                    {p.id === patient?.id && <Check className="h-4 w-4 shrink-0 text-brand-600" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-0.5 border-t border-slate-100 pt-2">
             <NavLink
               role="menuitem"
@@ -366,15 +362,6 @@ function AccountMenu() {
             >
               <UserCog className="h-[18px] w-[18px] text-brand-600" />
               {t('nav.account')}
-            </NavLink>
-            <NavLink
-              role="menuitem"
-              to="/profiles"
-              onClick={close}
-              className={({ isActive }) => cn(item, isActive ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-50')}
-            >
-              <Users className="h-[18px] w-[18px] text-brand-600" />
-              {t('nav.profiles')}
             </NavLink>
             <button role="menuitem" type="button" onClick={toggle} className={cn(item, 'text-slate-700 hover:bg-slate-50 lg:hidden')}>
               {theme === 'dark' ? <Sun className="h-[18px] w-[18px] text-amber-600" /> : <Moon className="h-[18px] w-[18px] text-indigo-600" />}
@@ -473,8 +460,7 @@ export function Layout() {
             <Brand compact />
             <div className="flex items-center gap-1.5">
               <CompactLanguageSwitcher />
-              <MobilePatientPill />
-              <AccountMenu />
+              <AccountMenu phone />
             </div>
           </div>
         </header>

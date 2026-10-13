@@ -26,7 +26,7 @@ def init_db() -> None:
 def _add_missing_columns() -> None:
     """create_all() does not alter existing tables; add columns introduced after a database was created."""
     added = {
-        "patient": {"owner_id": ("VARCHAR", True), "relationship": ("VARCHAR", True)},
+        "patient": {"owner_id": ("VARCHAR", True), "relationship": ("VARCHAR", True), "relationship_other": ("VARCHAR", False)},
         "account": {"email": ("VARCHAR", True), "email_verified_at": ("TIMESTAMP", False), "phone": ("VARCHAR", True),
                     "notify_security": ("BOOLEAN NOT NULL DEFAULT TRUE", False),
                     "notify_medicines": ("BOOLEAN NOT NULL DEFAULT TRUE", False),

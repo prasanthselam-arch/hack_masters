@@ -77,6 +77,7 @@ class Patient(SQLModel, table=True):
     phone: str | None = None  # E.164
     preferred_language: str = "en"
     relationship: str | None = None  # to the account holder: self | spouse | father | mother | son | daughter | ...
+    relationship_other: str | None = None  # the user's own word for it when relationship is "other", e.g. "Uncle"
     abha_number: str | None = Field(default=None, index=True)  # 14 digits, XX-XXXX-XXXX-XXXX
     abha_address: str | None = None  # name@abdm
     abha_linked_at: datetime | None = None

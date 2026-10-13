@@ -11,6 +11,7 @@ const FEMALE: Relationship[] = ['mother', 'daughter', 'sister', 'grandmother', '
 export interface ProfileValues {
   name: string
   relationship: Relationship | null
+  relationship_other: string | null
   gender: string | null
   birth_date: string | null
   phone: string | null
@@ -21,6 +22,7 @@ export function emptyProfile(lang: Lang, p?: Partial<Patient>): ProfileValues {
   return {
     name: p?.name ?? '',
     relationship: p?.relationship ?? null,
+    relationship_other: p?.relationship_other ?? null,
     gender: p?.gender ?? null,
     birth_date: p?.birth_date ?? null,
     phone: p?.phone ?? null,
@@ -66,13 +68,16 @@ export function ProfileForm({
 
   const name = v.name.replace(/\s+/g, ' ').trim()
   const dobProblem = v.birth_date && (v.birth_date > today || v.birth_date < '1900-01-01') ? t('profiles.dob_invalid') : null
+  const relationship = askRelationship ? v.relationship : initial.relationship
+  const otherText = relationship === 'other' ? (v.relationship_other ?? '').replace(/\s+/g, ' ').trim() || null : null
   const relProblem = askRelationship && !v.relationship ? t('profiles.relationship_required') : null
-  const valid = !!name && phoneValid && !dobProblem && !relProblem
+  const otherProblem = askRelationship && v.relationship === 'other' && !otherText ? t('profiles.relationship_other_required') : null
+  const valid = !!name && phoneValid && !dobProblem && !relProblem && !otherProblem
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setTried(true)
-    if (valid) onSubmit({ ...v, name, relationship: askRelationship ? v.relationship : initial.relationship })
+    if (valid) onSubmit({ ...v, name, relationship, relationship_other: otherText })
   }
   const setRelationship = (r: Relationship | null) =>
     setV((cur) => ({
@@ -101,23 +106,40 @@ export function ProfileForm({
             </label>
           )}
           {askRelationship && (
-            <label className="block">
-              <Label>{t('profiles.relationship')}</Label>
-              <Select
-                required
-                value={v.relationship ?? ''}
-                onChange={(e) => setRelationship((e.target.value || null) as Relationship | null)}
-                aria-invalid={tried && !!relProblem}
-              >
-                <option value="">{t('profiles.choose_relationship')}</option>
-                {RELATIONSHIPS.filter((r) => r !== 'self').map((r) => (
-                  <option key={r} value={r}>
-                    {t(`relationship.${r}`)}
-                  </option>
-                ))}
-              </Select>
-              <FieldMessage error={tried ? relProblem : null} />
-            </label>
+            <div className="space-y-3">
+              <label className="block">
+                <Label>{t('profiles.relationship')}</Label>
+                <Select
+                  required
+                  value={v.relationship ?? ''}
+                  onChange={(e) => setRelationship((e.target.value || null) as Relationship | null)}
+                  aria-invalid={tried && !!relProblem}
+                >
+                  <option value="">{t('profiles.choose_relationship')}</option>
+                  {RELATIONSHIPS.filter((r) => r !== 'self').map((r) => (
+                    <option key={r} value={r}>
+                      {t(`relationship.${r}`)}
+                    </option>
+                  ))}
+                </Select>
+                <FieldMessage error={tried ? relProblem : null} />
+              </label>
+              {v.relationship === 'other' && (
+                <label className="animate-fade-up block">
+                  <Label>{t('profiles.relationship_other')}</Label>
+                  <Input
+                    required
+                    maxLength={40}
+                    value={v.relationship_other ?? ''}
+                    onChange={(e) => setV({ ...v, relationship_other: e.target.value })}
+                    placeholder={t('profiles.relationship_other_hint')}
+                    autoFocus={!initial.relationship_other}
+                    aria-invalid={tried && !!otherProblem}
+                  />
+                  <FieldMessage error={tried ? otherProblem : null} />
+                </label>
+              )}
+            </div>
           )}
         </div>
       )}

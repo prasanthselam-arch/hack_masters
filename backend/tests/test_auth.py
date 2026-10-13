@@ -123,6 +123,14 @@ def test_profile_validation_relationship_and_account_settings(engine):
     assert r.status_code == 200 and r.json()["relationship"] == "father_in_law"
     assert c.patch(f"/api/patients/{dad['id']}", json={"name": None}).status_code == 422
 
+    uncle = c.post("/api/patients", json={"name": "Gopal", "relationship": "other", "relationship_other": "  Uncle "}).json()
+    assert uncle["relationship"] == "other" and uncle["relationship_other"] == "Uncle"
+    assert c.post("/api/patients", json={"name": "G", "relationship": "other", "relationship_other": "Uncle #2"}).status_code == 422
+    r = c.patch(f"/api/patients/{uncle['id']}", json={"relationship": "brother"})
+    assert r.json()["relationship"] == "brother" and r.json()["relationship_other"] is None
+    kept = c.post("/api/patients", json={"name": "Ravi K", "relationship": "father", "relationship_other": "Appa"}).json()
+    assert kept["relationship_other"] is None
+
     assert c.patch("/api/auth/me", json={"name": "Asha R"}).json()["name"] == "Asha R"
     assert c.patch("/api/auth/me", json={"login": "+91 91234 56789"}).status_code == 400  # needs the password
     r = c.patch("/api/auth/me", json={"login": "+91 91234 56789", "current_password": "secret-pass"})

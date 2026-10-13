@@ -81,6 +81,18 @@ class PatientFields(BaseModel):
             raise ValueError("Unknown relationship")
         return v
 
+    @field_validator("relationship_other", check_fields=False)
+    @classmethod
+    def _relationship_other(cls, v: str | None) -> str | None:
+        v = " ".join((v or "").split())
+        if not v:
+            return None
+        if len(v) > 40:
+            raise ValueError("Relationship is too long")
+        if any(ch.isdigit() or ch in "@<>{}[]()\\/|#$%^*=+~`;:\"!?&_," for ch in v):
+            raise ValueError("Relationship can't contain numbers or symbols")
+        return v
+
 
 class PatientIn(PatientFields):
     name: str
@@ -89,6 +101,7 @@ class PatientIn(PatientFields):
     phone: str | None = None
     preferred_language: str = "en"
     relationship: str | None = None
+    relationship_other: str | None = None
 
 
 class PatientPatch(PatientFields):
@@ -98,6 +111,7 @@ class PatientPatch(PatientFields):
     phone: str | None = None
     preferred_language: str | None = None
     relationship: str | None = None
+    relationship_other: str | None = None
 
 
 def _patient_out(p: Patient) -> dict[str, Any]:
@@ -121,6 +135,8 @@ def create_patient(body: PatientIn, acc: Account = Depends(current_account), db:
         p.relationship = "self"
     if p.relationship == "self" and _self_profile(db, acc.id):
         raise HTTPException(409, "Your own profile already exists; choose how this person is related to you")
+    if p.relationship != "other":
+        p.relationship_other = None
     p.fhir_json = mapper.patient_resource(p)
     db.add(p)
     db.commit()
@@ -145,6 +161,8 @@ def update_patient(body: PatientPatch, p: Patient = Depends(patient_or_404), db:
             raise HTTPException(409, "Your own profile already exists; choose how this person is related to you")
     for k, v in changes.items():
         setattr(p, k, v)
+    if p.relationship != "other":
+        p.relationship_other = None
     p.fhir_json = mapper.patient_resource(p)
     db.add(p)
     db.commit()

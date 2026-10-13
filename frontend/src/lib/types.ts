@@ -36,6 +36,7 @@ export interface Patient {
   phone: string | null
   preferred_language: Lang
   relationship: Relationship | null
+  relationship_other: string | null
   abha_number: string | null
   abha_address: string | null
   abha_linked_at: string | null

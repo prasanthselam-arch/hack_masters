@@ -1,9 +1,16 @@
 import { clsx, type ClassValue } from 'clsx'
+import type { TFunction } from 'i18next'
 import { twMerge } from 'tailwind-merge'
-import type { Flag, Lang } from './types'
+import type { Flag, Lang, Patient } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/** "Mother", or the user's own word for an "other" relationship. */
+export function relationshipLabel(p: Pick<Patient, 'relationship' | 'relationship_other'>, t: TFunction) {
+  if (!p.relationship) return ''
+  return p.relationship === 'other' && p.relationship_other ? p.relationship_other : t(`relationship.${p.relationship}`)
 }
 
 const LOCALE: Record<Lang, string> = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN', kn: 'kn-IN' }
